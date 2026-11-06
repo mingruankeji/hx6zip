@@ -848,6 +848,8 @@ impl AppView {
         self.explorer.loading = true;
         let worker_location = location.clone();
         let password = Self::password(&self.archive_password, cx);
+        let control = mzip::archive::JobControl::default()
+            .with_password_prompt(self.password_prompt.clone());
         let cached_tree = match &location {
             Location::Archive { path, .. }
                 if self.archive.as_ref().is_some_and(|info| &info.path == path)
@@ -865,10 +867,10 @@ impl AppView {
                 let info = mzip::archive::inspect_archive(
                     path,
                     password.as_deref(),
-                    &mzip::archive::JobControl::default(),
+                    &control,
                 )?;
                 let tree =
-                    mzip::archive::ArchiveTree::new(&info, &mzip::archive::JobControl::default())?;
+                    mzip::archive::ArchiveTree::new(&info, &control)?;
                 let entries = archive_file_entries(&tree, directory)?;
                 Ok((entries, Some((info, tree))))
             } else {

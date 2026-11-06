@@ -2,6 +2,7 @@
 mod archive_drag;
 mod explorer;
 mod overwrite;
+mod password;
 mod progress;
 mod render;
 mod settings;
@@ -145,6 +146,8 @@ pub struct AppView {
     format: ArchiveFormat,
     overwrite_create: bool,
     overwrite_dialog: overwrite::OverwriteDialog,
+    password_prompt: mzip::archive::PasswordPrompt,
+    password_request: Option<password::PasswordRequest>,
     smart_extract: bool,
     open_after_extract: bool,
     dark: bool,
@@ -204,6 +207,7 @@ impl AppView {
         } else {
             settings::settings_path()
         };
+        let password_prompt = Self::password_prompt(cx);
         Self {
             explorer,
             exported_entries: Vec::new(),
@@ -229,6 +233,8 @@ impl AppView {
             format: ArchiveFormat::Zip,
             overwrite_create: false,
             overwrite_dialog: overwrite::OverwriteDialog::new(window),
+            password_prompt,
+            password_request: None,
             smart_extract: true,
             open_after_extract: false,
             dark: false,
@@ -791,6 +797,7 @@ impl AppView {
         let cancellation = CancellationToken::default();
         let worker_cancellation = cancellation.clone();
         let integrity = self.integrity_mode;
+        let password_prompt = self.password_prompt.clone();
         let (sender, receiver) = async_channel::bounded(1);
         let started_at = Instant::now();
         let spawn = thread::Builder::new()
@@ -805,7 +812,8 @@ impl AppView {
                         .expect("progress state poisoned")
                         .report(progress, &progress_sender, Instant::now());
                 })
-                .with_integrity(integrity);
+                .with_integrity(integrity)
+                .with_password_prompt(password_prompt);
                 let result = operation(control.clone());
                 let finished_at = Instant::now();
                 let last_progress = progress_state

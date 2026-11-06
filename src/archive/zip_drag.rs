@@ -44,6 +44,24 @@ impl ZipDragSource {
         password: Option<&str>,
         control: &JobControl,
     ) -> Result<Self> {
+        let selected = archive_selection(info, paths)?;
+        control.with_archive_password(
+            &info.path,
+            password,
+            info.entries.iter().any(|entry| {
+                selected.contains(&entry.index) && entry.is_encrypted == Some(true)
+            }),
+            true,
+            |password| Self::with_password(info, paths, password, control),
+        )
+    }
+
+    fn with_password(
+        info: &ArchiveInfo,
+        paths: &[String],
+        password: Option<&str>,
+        control: &JobControl,
+    ) -> Result<Self> {
         ensure!(info.format == ArchiveKind::Zip, "拖放内容不是 ZIP 压缩包");
         control.check_cancelled()?;
         let file = open_archive(&info.path)?;
@@ -63,6 +81,13 @@ impl ZipDragSource {
         let total = entries.values().try_fold(0u64, |total, entry| {
             total.checked_add(entry.size).context("所选文件大小溢出")
         })?;
+
+        for entry in entries
+            .values()
+            .filter(|entry| entry.is_encrypted == Some(true))
+        {
+            open_entry(&mut archive, entry, password)?;
+        }
 
         if control.integrity() == IntegrityMode::Safe {
             let mut tracker = Tracker::new(control, "正在校验拖放内容", total);

@@ -5,6 +5,7 @@ mod extract;
 mod inspect;
 mod iso;
 mod other;
+mod password;
 mod rar;
 mod sfx;
 mod special;
@@ -33,6 +34,7 @@ pub use extract::{
     smart_destination,
 };
 pub use inspect::inspect_archive;
+pub use password::PasswordPrompt;
 pub use volumes::{merge_files, split_file};
 pub use zip_drag::{ZipDragReader, ZipDragSource};
 
@@ -294,6 +296,7 @@ pub struct JobControl {
     progress: Arc<dyn Fn(Progress) + Send + Sync>,
     integrity: IntegrityMode,
     warnings: Arc<Mutex<Vec<String>>>,
+    password_prompt: Option<PasswordPrompt>,
 }
 
 impl Default for JobControl {
@@ -312,6 +315,7 @@ impl JobControl {
             progress: Arc::new(progress),
             integrity: IntegrityMode::default(),
             warnings: Arc::new(Mutex::new(Vec::new())),
+            password_prompt: None,
         }
     }
 

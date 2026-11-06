@@ -140,6 +140,32 @@ pub fn extract_archive(
     options: &ExtractOptions,
     control: &JobControl,
 ) -> Result<()> {
+    control.with_archive_password(
+        &info.path,
+        options.password.as_deref(),
+        info.entries.iter().any(|entry| {
+            entry.is_encrypted == Some(true)
+                && options
+                    .selected
+                    .as_ref()
+                    .is_none_or(|selected| selected.contains(&entry.index))
+        }),
+        control.integrity() == IntegrityMode::Safe,
+        |password| {
+            let options = ExtractOptions {
+                password: password.map(str::to_owned),
+                ..options.clone()
+            };
+            extract_archive_with_password(info, &options, control)
+        },
+    )
+}
+
+fn extract_archive_with_password(
+    info: &ArchiveInfo,
+    options: &ExtractOptions,
+    control: &JobControl,
+) -> Result<()> {
     extract_archive_without_special(info, options, control)?;
     let scopes = match &options.selected {
         None => vec![(PathBuf::new(), PathBuf::new())],
@@ -510,6 +536,26 @@ fn planned_conflicts(
 }
 
 pub fn extract_drag_entries(
+    info: &ArchiveInfo,
+    paths: &[String],
+    destination: &Path,
+    password: Option<&str>,
+    overwrite: bool,
+    control: &JobControl,
+) -> Result<()> {
+    let selected = super::archive_selection(info, paths)?;
+    control.with_archive_password(
+        &info.path,
+        password,
+        info.entries.iter().any(|entry| {
+            selected.contains(&entry.index) && entry.is_encrypted == Some(true)
+        }),
+        control.integrity() == IntegrityMode::Safe,
+        |password| extract_drag_with_password(info, paths, destination, password, overwrite, control),
+    )
+}
+
+fn extract_drag_with_password(
     info: &ArchiveInfo,
     paths: &[String],
     destination: &Path,

@@ -64,6 +64,7 @@ impl Palette {
 
 impl Render for AppView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.show_password_prompt(window, cx);
         self.refresh_filter(cx);
         let palette = Palette::new(self.dark);
         if self.shell_setup == Some(ShellSetup::Split) {

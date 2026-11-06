@@ -80,11 +80,14 @@ extern "C" fn callback(
     }
     // UnRAR invokes this callback synchronously while the stack-owned state is registered.
     let state = unsafe { &mut *(user_data as *mut CallbackState<'_, '_>) };
+    if state.error.is_some() {
+        return -1;
+    }
     let result = (|| -> Result<i32> {
         state.control.check_cancelled()?;
         match message {
             native::UCM_NEEDPASSWORDW => {
-                let password = state.password.context("RAR 压缩包需要密码")?;
+                let password = state.password.ok_or(super::password::PasswordError::Required)?;
                 let capacity = usize::try_from(parameter2).context("RAR 密码缓冲区无效")?;
                 ensure!(
                     parameter1 != 0 && password.len() < capacity,
@@ -96,6 +99,9 @@ extern "C" fn callback(
                     destination.add(password.len()).write(0);
                 }
                 Ok(0)
+            }
+            native::UCM_NEEDPASSWORD if state.password.is_none() => {
+                Err(super::password::PasswordError::Required.into())
             }
             native::UCM_NEEDPASSWORD => bail!("此 RAR 密码编码不受支持"),
             native::UCM_CHANGEVOLUME | native::UCM_CHANGEVOLUMEW
@@ -137,6 +143,12 @@ extern "C" fn callback(
 fn check_code(code: i32, action: &str) -> Result<()> {
     if code == native::ERAR_SUCCESS {
         return Ok(());
+    }
+    if code == native::ERAR_MISSING_PASSWORD {
+        return Err(super::password::PasswordError::Required).context(action.to_owned());
+    }
+    if code == native::ERAR_BAD_PASSWORD {
+        return Err(super::password::PasswordError::Incorrect).context(action.to_owned());
     }
     let reason = match code {
         native::ERAR_NO_MEMORY => "内存不足",

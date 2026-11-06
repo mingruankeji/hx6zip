@@ -21,6 +21,16 @@ pub fn inspect_archive(
     password: Option<&str>,
     control: &JobControl,
 ) -> Result<ArchiveInfo> {
+    control.with_archive_password(path, password, false, true, |password| {
+        inspect_archive_with_password(path, password, control)
+    })
+}
+
+fn inspect_archive_with_password(
+    path: &Path,
+    password: Option<&str>,
+    control: &JobControl,
+) -> Result<ArchiveInfo> {
     control.check_cancelled()?;
     let mut file =
         File::open(path).with_context(|| format!("无法打开压缩包 {}", path.display()))?;
@@ -112,7 +122,13 @@ pub(super) fn inspect_sevenzip<R: Read + Seek>(
             size: file.size,
             compressed_size: (!reader.archive().is_solid).then_some(file.compressed_size),
             is_directory: file.is_directory,
-            is_encrypted: None,
+            is_encrypted: Some(
+                reader.archive().stream_map.file_block_index[index].is_some_and(|block| {
+                    reader.archive().blocks[block].coders.iter().any(|coder| {
+                        coder.encoder_method_id() == sevenz_rust2::EncoderMethod::ID_AES256_SHA256
+                    })
+                }),
+            ),
             unsupported_kind: file.is_anti_item || is_link,
             is_symbolic_link: file.has_windows_attributes && unix_kind == 0xa000,
             modified: sevenzip_modified(file)?,

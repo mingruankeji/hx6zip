@@ -355,6 +355,22 @@ pub fn edit_archive(
     password: Option<&str>,
     control: &JobControl,
 ) -> Result<ArchiveInfo> {
+    editable_format(info)?;
+    control.with_archive_password(
+        &info.path,
+        password,
+        info.entries.iter().any(|entry| entry.is_encrypted == Some(true)),
+        true,
+        |password| edit_archive_with_password(info, edit, password, control),
+    )
+}
+
+fn edit_archive_with_password(
+    info: &ArchiveInfo,
+    edit: &ArchiveEdit,
+    password: Option<&str>,
+    control: &JobControl,
+) -> Result<ArchiveInfo> {
     let format = editable_format(info)?;
     control.check_cancelled()?;
     super::extract::validate_edit_entries(info)?;
