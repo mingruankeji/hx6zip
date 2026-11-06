@@ -1,0 +1,26 @@
+1 ICON "mzip.ico"
+
+1 VERSIONINFO
+FILEVERSION MZIP_VERSION_MAJOR,MZIP_VERSION_MINOR,MZIP_VERSION_PATCH,0
+PRODUCTVERSION MZIP_VERSION_MAJOR,MZIP_VERSION_MINOR,MZIP_VERSION_PATCH,0
+FILEOS 0x40004
+FILETYPE 1
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "MZip\0"
+            VALUE "FileDescription", "MZip archive manager\0"
+            VALUE "FileVersion", MZIP_VERSION_STRING "\0"
+            VALUE "InternalName", "mzip\0"
+            VALUE "OriginalFilename", "mzip.exe\0"
+            VALUE "ProductName", "MZip\0"
+            VALUE "ProductVersion", MZIP_VERSION_STRING "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

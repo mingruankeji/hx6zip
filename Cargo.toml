@@ -1,0 +1,112 @@
+[package]
+name = "mzip"
+version = "0.1.2"
+edition = "2024"
+rust-version = "1.93"
+description = "A native desktop archive manager"
+
+[workspace]
+members = ["shell-protocol", "shell-extension"]
+default-members = ["."]
+resolver = "2"
+
+[build-dependencies]
+embed-resource = "3.0"
+
+[features]
+default = ["gui"]
+gui = [
+    "dep:async-channel",
+    "dep:directories",
+    "dep:gpui-kit",
+    "dep:reqwest",
+    "dep:rfd",
+    "dep:url",
+]
+ui-tests = ["gui", "gpui-kit/test-support"]
+
+[dependencies]
+anyhow = "1.0"
+async-channel = { version = "2.5", optional = true }
+brotli = "8.0"
+bzip2 = "0.6"
+cab = "0.6"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+crc32fast = "1.5"
+directories = { version = "6", optional = true }
+flate2 = "1.1"
+gpui-kit = { version = "=0.8.1", optional = true }
+iso9660-forensic-core = "0.1.0"
+lzma-rust2 = "0.23"
+mzip-shell-protocol = { path = "shell-protocol" }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "multipart", "rustls-tls", "system-proxy"], optional = true }
+rfd = { version = "0.16", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+sevenz-rust2 = "0.24.2"
+tar = "0.4"
+tempfile = "3.27"
+unrar-ng-sys = "0.7.7"
+url = { version = "2", optional = true }
+walkdir = "2.5"
+zip = { version = "8.6", default-features = false, features = [
+    "aes-crypto",
+    "bzip2",
+    "chrono",
+    "deflate-flate2-zlib-rs",
+    "deflate64",
+    "lzma",
+    "ppmd",
+    "time",
+    "xz",
+    "zstd",
+] }
+zstd = "0.13"
+
+[dev-dependencies]
+# Enable headless tests for the GPUI backend used by gpui-kit.
+gpui-pre = { version = "=0.3.10", features = ["test-support"] }
+
+[target.'cfg(windows)'.dependencies]
+raw-window-handle = { version = "0.6", features = ["std"] }
+windows-core = "0.61.2"
+windows = { version = "0.61.3", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Storage_EnhancedStorage",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_DataExchange",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Variant",
+    "Win32_System_SystemInformation",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_System_Ole",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Controls",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[[bin]]
+name = "mzip"
+path = "src/main.rs"
+required-features = ["gui"]
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false
+
+[patch.crates-io]
+lzma-rust2 = { path = "vendor/lzma-rust2" }
+zip = { path = "vendor/zip" }

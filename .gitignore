@@ -1,0 +1,10 @@
+/target/
+/.wix/
+/dist/
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+*.key
+*.tmp
