@@ -214,6 +214,11 @@
               <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --shell-server" Type="string" />
               <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]hx6zip.exe" Type="string" />
             </RegistryKey>
+
+            <RemoveRegistryKey Id="RemoveLegacyMZipFileMenuOnInstall" Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip" Action="removeOnInstall" />
+            <RemoveRegistryKey Id="RemoveLegacyMZipFileMenuOnUninstall" Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip" Action="removeOnUninstall" />
+            <RemoveRegistryKey Id="RemoveLegacyMZipFolderMenuOnInstall" Root="HKCU" Key="Software\Classes\Directory\Background\shell\MZip" Action="removeOnInstall" />
+            <RemoveRegistryKey Id="RemoveLegacyMZipFolderMenuOnUninstall" Root="HKCU" Key="Software\Classes\Directory\Background\shell\MZip" Action="removeOnUninstall" />
           </Component>
 
           <Component Id="Hx6ZipFileAssociations" Guid="*">

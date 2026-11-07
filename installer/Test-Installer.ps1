@@ -148,12 +148,29 @@ $legacy = @($registry | Where-Object {
     $_.Values[1] -eq $eachZipKey -and $_.Values[2] -eq 'ExplorerCommandHandler'
 })
 Assert-Installer ($legacy.Count -eq 0) 'Separate ZIP traditional menu does not depend on the DLL handler'
-$removals = @(Read-MsiRows $database 'SELECT `Root`,`Key`,`Name` FROM `RemoveRegistry`' 3)
+$removals = @(Read-MsiRows $database 'SELECT `Root`,`Key`,`Name`,`Component_` FROM `RemoveRegistry`' 4)
 $cleanup = @($removals | Where-Object {
     $_.Values[0] -eq '1' -and $_.Values[1] -eq $eachZipKey -and
     $_.Values[2] -eq 'ExplorerCommandHandler'
 })
 Assert-Installer ($cleanup.Count -eq 1) 'Upgrade removes the previous separate ZIP DLL handler value'
+$legacyMenuKeys = @(
+    'Software\Classes\AllFilesystemObjects\shell\MZip',
+    'Software\Classes\Directory\Background\shell\MZip'
+)
+$uninstallRegistry = @(Read-MsiRows $database 'SELECT `Root`,`Key`,`Name`,`Value`,`Component_` FROM `Registry`' 5)
+foreach ($key in $legacyMenuKeys) {
+    $removeOnInstall = @($removals | Where-Object {
+        $_.Values[0] -eq '1' -and $_.Values[1] -eq $key -and
+        $_.Values[2] -eq '-' -and $_.Values[3] -eq 'Hx6ZipShellIntegration'
+    })
+    $removeOnUninstall = @($uninstallRegistry | Where-Object {
+        $_.Values[0] -eq '1' -and $_.Values[1] -eq $key -and
+        $_.Values[2] -eq '-' -and $_.Values[4] -eq 'Hx6ZipShellIntegration'
+    })
+    Assert-Installer ($removeOnInstall.Count -eq 1 -and $removeOnUninstall.Count -eq 1) `
+        "Installer removes the legacy MZip menu key on install and uninstall: $key"
+}
 Assert-Installer ($sequence['RemoveRegistryValues'] -gt 0 -and
     $sequence['RemoveRegistryValues'] -lt $sequence['WriteRegistryValues']) 'Legacy registry cleanup runs before new values are written'
 [void][System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($database)
@@ -274,7 +291,9 @@ try {
     Invoke-TestMsi @('/x', $repackedCode) (Join-Path $work '08-uninstall.log')
     Assert-Installer (@(Get-InstalledHx6Zip).Count -eq 0 -and -not (Test-Path -LiteralPath $installedExecutable) -and
         -not (Test-Path -LiteralPath 'HKCU:\Software\Classes\AllFilesystemObjects\shell\Hx6Zip') -and
-        -not (Test-Path -LiteralPath 'HKCU:\Software\Classes\Hx6Zip.Archive.1')) 'Uninstall removes the application, uninstall entry, menu, and file association'
+        -not (Test-Path -LiteralPath 'HKCU:\Software\Classes\Hx6Zip.Archive.1') -and
+        -not (Test-Path -LiteralPath 'HKCU:\Software\Classes\AllFilesystemObjects\shell\MZip') -and
+        -not (Test-Path -LiteralPath 'HKCU:\Software\Classes\Directory\Background\shell\MZip')) 'Uninstall removes the application, uninstall entry, current and legacy menus, and file association'
     $passed = $true
 } finally {
     foreach ($installed in @(Get-InstalledHx6Zip)) {
