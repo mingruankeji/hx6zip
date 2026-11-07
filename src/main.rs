@@ -25,7 +25,7 @@ fn main() {
         Ok(action) => action,
         Err(error) => {
             rfd::MessageDialog::new()
-                .set_title("MZip 错误")
+                .set_title("Hx6Zip 错误")
                 .set_description(format!("{error:#}"))
                 .set_level(rfd::MessageLevel::Error)
                 .show();
@@ -42,43 +42,43 @@ fn main() {
     let compact = matches!(
         initial_action,
         Some(
-            mzip::cli::StartupAction::Create { .. }
-                | mzip::cli::StartupAction::CreateEach { .. }
-                | mzip::cli::StartupAction::Extract { .. }
-                | mzip::cli::StartupAction::ConfigureCreate { .. }
-                | mzip::cli::StartupAction::ConfigureExtract { .. }
-                | mzip::cli::StartupAction::Split { .. }
-                | mzip::cli::StartupAction::Merge { .. }
+            hx6zip::cli::StartupAction::Create { .. }
+                | hx6zip::cli::StartupAction::CreateEach { .. }
+                | hx6zip::cli::StartupAction::Extract { .. }
+                | hx6zip::cli::StartupAction::ConfigureCreate { .. }
+                | hx6zip::cli::StartupAction::ConfigureExtract { .. }
+                | hx6zip::cli::StartupAction::Split { .. }
+                | hx6zip::cli::StartupAction::Merge { .. }
         )
     );
     let setup = matches!(
         initial_action,
         Some(
-            mzip::cli::StartupAction::ConfigureCreate { .. }
-                | mzip::cli::StartupAction::ConfigureExtract { .. }
-                | mzip::cli::StartupAction::Split { .. }
+            hx6zip::cli::StartupAction::ConfigureCreate { .. }
+                | hx6zip::cli::StartupAction::ConfigureExtract { .. }
+                | hx6zip::cli::StartupAction::Split { .. }
         )
     );
     let title = match &initial_action {
-        Some(mzip::cli::StartupAction::CreateEach { .. }) => {
-            "MZip - 压缩每个到单独的压缩包中".to_owned()
+        Some(hx6zip::cli::StartupAction::CreateEach { .. }) => {
+            "Hx6Zip - 压缩每个到单独的压缩包中".to_owned()
         }
-        Some(mzip::cli::StartupAction::Split { .. }) => "MZip - 分割文件".to_owned(),
-        Some(mzip::cli::StartupAction::Merge { .. }) => "MZip - 合并文件".to_owned(),
-        Some(mzip::cli::StartupAction::Create { format, sources }) => {
-            mzip::cli::automatic_archive_path(sources, *format)
+        Some(hx6zip::cli::StartupAction::Split { .. }) => "Hx6Zip - 分割文件".to_owned(),
+        Some(hx6zip::cli::StartupAction::Merge { .. }) => "Hx6Zip - 合并文件".to_owned(),
+        Some(hx6zip::cli::StartupAction::Create { format, sources }) => {
+            hx6zip::cli::automatic_archive_path(sources, *format)
                 .ok()
                 .and_then(|path| {
                     path.file_name()
-                        .map(|name| format!("MZip - {}", name.to_string_lossy()))
+                        .map(|name| format!("Hx6Zip - {}", name.to_string_lossy()))
                 })
-                .unwrap_or_else(|| "MZip".to_owned())
+                .unwrap_or_else(|| "Hx6Zip".to_owned())
         }
-        Some(mzip::cli::StartupAction::ConfigureCreate { .. }) => {
-            "MZip - 添加到压缩文件".to_owned()
+        Some(hx6zip::cli::StartupAction::ConfigureCreate { .. }) => {
+            "Hx6Zip - 添加到压缩文件".to_owned()
         }
-        Some(mzip::cli::StartupAction::ConfigureExtract { .. }) => "MZip - 解压到".to_owned(),
-        _ => "MZip".to_owned(),
+        Some(hx6zip::cli::StartupAction::ConfigureExtract { .. }) => "Hx6Zip - 解压到".to_owned(),
+        _ => "Hx6Zip".to_owned(),
     };
     application().with_assets(assets::Assets).run(move |cx| {
         init(cx);
@@ -103,12 +103,12 @@ fn main() {
                 title: Some(title.clone().into()),
                 ..Default::default()
             }),
-            app_id: Some("mzip.desktop".to_owned()),
+            app_id: Some("hx6zip.desktop".to_owned()),
             ..Default::default()
         };
         open_window(options, cx, move |window, cx| {
             #[cfg(windows)]
-            window_icon::set_window_icon(window).expect("无法设置 MZip 窗口图标");
+            window_icon::set_window_icon(window).expect("无法设置 Hx6Zip 窗口图标");
             let view = cx.new(|cx| ui::AppView::new(window, cx));
             let weak_view = view.downgrade();
             window.on_window_should_close(cx, move |_, cx| {
@@ -118,36 +118,36 @@ fn main() {
             });
             if let Some(action) = initial_action {
                 view.update(cx, |view, cx| match action {
-                    mzip::cli::StartupAction::Split { path } => {
+                    hx6zip::cli::StartupAction::Split { path } => {
                         view.configure_split(path, window, cx)
                     }
-                    mzip::cli::StartupAction::Merge { sources } => view.start_merge(sources, cx),
-                    mzip::cli::StartupAction::Extract { path, named_folder } => {
+                    hx6zip::cli::StartupAction::Merge { sources } => view.start_merge(sources, cx),
+                    hx6zip::cli::StartupAction::Extract { path, named_folder } => {
                         view.start_extract_from_path(path, named_folder, cx);
                     }
-                    mzip::cli::StartupAction::Open(path) => view.open_path(path, cx),
-                    mzip::cli::StartupAction::Create { format, sources } => {
+                    hx6zip::cli::StartupAction::Open(path) => view.open_path(path, cx),
+                    hx6zip::cli::StartupAction::Create { format, sources } => {
                         view.start_create_from_sources(sources, format, cx);
                     }
-                    mzip::cli::StartupAction::CreateEach { sources } => {
+                    hx6zip::cli::StartupAction::CreateEach { sources } => {
                         view.start_create_each(sources, cx);
                     }
-                    mzip::cli::StartupAction::ConfigureCreate { sources } => {
+                    hx6zip::cli::StartupAction::ConfigureCreate { sources } => {
                         view.configure_create_from_sources(sources, cx);
                     }
-                    mzip::cli::StartupAction::ConfigureExtract { path } => {
+                    hx6zip::cli::StartupAction::ConfigureExtract { path } => {
                         view.configure_extract_from_path(path, cx);
                     }
                 });
             }
             view
         })
-        .expect("无法打开 MZip 窗口");
+        .expect("无法打开 Hx6Zip 窗口");
         cx.activate(true);
     });
 }
 
-fn initial_action() -> anyhow::Result<Option<mzip::cli::StartupAction>> {
+fn initial_action() -> anyhow::Result<Option<hx6zip::cli::StartupAction>> {
     #[cfg(windows)]
     match std::env::args_os()
         .nth(1)
@@ -155,7 +155,7 @@ fn initial_action() -> anyhow::Result<Option<mzip::cli::StartupAction>> {
         .and_then(|arg| arg.to_str())
     {
         Some("--shell-server") => {
-            mzip::shell::run_server()?;
+            hx6zip::shell::run_server()?;
             return Ok(None);
         }
         Some(
@@ -166,22 +166,22 @@ fn initial_action() -> anyhow::Result<Option<mzip::cli::StartupAction>> {
             | "--shell-split-file"
             | "--shell-merge-files"),
         ) => {
-            let sources = mzip::shell::read_sources(std::io::stdin().lock())?;
+            let sources = hx6zip::shell::read_sources(std::io::stdin().lock())?;
             return Ok(Some(match flag {
-                "--shell-create-each-zip" => mzip::cli::StartupAction::CreateEach { sources },
+                "--shell-create-each-zip" => hx6zip::cli::StartupAction::CreateEach { sources },
                 "--shell-split-file" => {
                     anyhow::ensure!(sources.len() == 1, "分割需要且只能指定一个文件");
-                    mzip::cli::StartupAction::Split {
+                    hx6zip::cli::StartupAction::Split {
                         path: sources.into_iter().next().unwrap(),
                     }
                 }
-                "--shell-merge-files" => mzip::cli::StartupAction::Merge { sources },
-                "--shell-add-to-archive" => mzip::cli::StartupAction::ConfigureCreate { sources },
-                _ => mzip::cli::StartupAction::Create {
+                "--shell-merge-files" => hx6zip::cli::StartupAction::Merge { sources },
+                "--shell-add-to-archive" => hx6zip::cli::StartupAction::ConfigureCreate { sources },
+                _ => hx6zip::cli::StartupAction::Create {
                     format: if flag == "--shell-create-zip" {
-                        mzip::archive::ArchiveFormat::Zip
+                        hx6zip::archive::ArchiveFormat::Zip
                     } else {
-                        mzip::archive::ArchiveFormat::SevenZip
+                        hx6zip::archive::ArchiveFormat::SevenZip
                     },
                     sources,
                 },
@@ -207,7 +207,7 @@ fn initial_action() -> anyhow::Result<Option<mzip::cli::StartupAction>> {
     {
         anyhow::ensure!(args.len() > 1, "请指定要压缩的文件或文件夹");
     }
-    Ok(mzip::cli::startup_action(args.into_iter()))
+    Ok(hx6zip::cli::startup_action(args.into_iter()))
 }
 
 #[cfg(all(windows, not(debug_assertions)))]
@@ -216,7 +216,7 @@ fn install_panic_handler() {
     std::panic::set_hook(Box::new(move |info| {
         default_hook(info);
         rfd::MessageDialog::new()
-            .set_title("MZip 错误")
+            .set_title("Hx6Zip 错误")
             .set_description(format!(
                 "程序遇到意外错误，请保存以下信息并重新启动：\n\n{info}"
             ))

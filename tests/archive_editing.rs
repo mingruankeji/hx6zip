@@ -1,6 +1,6 @@
 use std::{fs, io::Write, path::Path};
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveEdit, ArchiveFormat, ArchiveInfo, CancellationToken, CreateOptions, IntegrityMode,
     JobControl, archive_children, archive_selection, create_archive, edit_archive, export_entries,
     import_conflicts, inspect_archive,
@@ -121,7 +121,7 @@ fn zip_and_sevenzip_edit_current_folder_replace_delete_and_export() {
                 e.unwrap()
                     .file_name()
                     .to_string_lossy()
-                    .starts_with(".mzip-")
+                    .starts_with(".hx6zip-")
             }));
         }
     }

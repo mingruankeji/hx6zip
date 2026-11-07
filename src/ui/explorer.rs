@@ -21,7 +21,7 @@ use gpui_kit::{
 };
 
 use super::{AppView, Page, format_size};
-use mzip::archive::ArchiveKind;
+use hx6zip::archive::ArchiveKind;
 
 const FILE_ROW_HEIGHT: Pixels = px(36.0);
 const MARQUEE_THRESHOLD: f64 = 4.0;
@@ -85,7 +85,7 @@ struct FileEntry {
 }
 
 fn archive_file_entries(
-    tree: &mzip::archive::ArchiveTree,
+    tree: &hx6zip::archive::ArchiveTree,
     directory: &str,
 ) -> Result<Vec<FileEntry>> {
     let entries = tree.children(directory)?;
@@ -244,7 +244,7 @@ fn read_location(location: &Location) -> Result<Vec<FileEntry>> {
 }
 
 pub(super) struct Explorer {
-    archive_tree: Option<Arc<mzip::archive::ArchiveTree>>,
+    archive_tree: Option<Arc<hx6zip::archive::ArchiveTree>>,
     location: Location,
     entries: Vec<FileEntry>,
     selected: BTreeSet<usize>,
@@ -556,8 +556,8 @@ impl AppView {
 
     pub(super) fn enter_archive_root(
         &mut self,
-        info: mzip::archive::ArchiveInfo,
-        tree: mzip::archive::ArchiveTree,
+        info: hx6zip::archive::ArchiveInfo,
+        tree: hx6zip::archive::ArchiveTree,
         cx: &mut Context<Self>,
     ) -> Result<()> {
         let entries = archive_file_entries(&tree, "")?;
@@ -589,8 +589,8 @@ impl AppView {
 
     pub(super) fn refresh_open_archive(
         &mut self,
-        info: mzip::archive::ArchiveInfo,
-        tree: mzip::archive::ArchiveTree,
+        info: hx6zip::archive::ArchiveInfo,
+        tree: hx6zip::archive::ArchiveTree,
         cx: &mut Context<Self>,
     ) {
         let directory = match &self.explorer.location {
@@ -642,18 +642,18 @@ impl AppView {
         let directory = directory.clone();
         let password = Self::password(&self.archive_password, cx);
         self.start_job("正在检查待添加项目…", super::JobKind::Update, cx, move |control| {
-            let conflicts = mzip::archive::import_conflicts(&info, &sources, &directory, &control)?;
+            let conflicts = hx6zip::archive::import_conflicts(&info, &sources, &directory, &control)?;
             let overwrite = !conflicts.is_empty();
             if overwrite {
                 let preview = conflicts.iter().take(8).cloned().collect::<Vec<_>>().join("\n");
                 let result = rfd::MessageDialog::new().set_title("替换压缩包中的同名项目")
                     .set_description(format!("存在 {} 个同名项目：\n{preview}\n\n是否全部替换？同名文件夹合并，文件/文件夹类型冲突时替换整个项目。", conflicts.len()))
                     .set_level(rfd::MessageLevel::Warning).set_buttons(rfd::MessageButtons::YesNo).show();
-                if result != rfd::MessageDialogResult::Yes { return Err(mzip::archive::Cancelled.into()); }
+                if result != rfd::MessageDialogResult::Yes { return Err(hx6zip::archive::Cancelled.into()); }
             }
-            let edit = mzip::archive::ArchiveEdit::Add { sources, directory, overwrite };
-            let info = mzip::archive::edit_archive(&info, &edit, password.as_deref(), &control)?;
-            let tree = mzip::archive::ArchiveTree::new(&info, &control)?;
+            let edit = hx6zip::archive::ArchiveEdit::Add { sources, directory, overwrite };
+            let info = hx6zip::archive::edit_archive(&info, &edit, password.as_deref(), &control)?;
+            let tree = hx6zip::archive::ArchiveTree::new(&info, &control)?;
             Ok(super::JobOutput::Updated(info, tree))
         });
     }
@@ -664,7 +664,7 @@ impl AppView {
             return;
         }
         let Some(info) = &self.archive else { return };
-        if let Err(error) = mzip::archive::editable_format(info) {
+        if let Err(error) = hx6zip::archive::editable_format(info) {
             self.set_status(format!("{error:#}"), true, cx);
             return;
         }
@@ -693,13 +693,13 @@ impl AppView {
             super::JobKind::Update,
             cx,
             move |control| {
-                let info = mzip::archive::edit_archive(
+                let info = hx6zip::archive::edit_archive(
                     &info,
-                    &mzip::archive::ArchiveEdit::Delete { paths },
+                    &hx6zip::archive::ArchiveEdit::Delete { paths },
                     password.as_deref(),
                     &control,
                 )?;
-                let tree = mzip::archive::ArchiveTree::new(&info, &control)?;
+                let tree = hx6zip::archive::ArchiveTree::new(&info, &control)?;
                 Ok(super::JobOutput::Updated(info, tree))
             },
         );
@@ -707,7 +707,7 @@ impl AppView {
 
     fn extract_archive_selection(&mut self, cx: &mut Context<Self>) {
         let Some(info) = &self.archive else { return };
-        let selected = match mzip::archive::archive_selection(info, &self.archive_paths()) {
+        let selected = match hx6zip::archive::archive_selection(info, &self.archive_paths()) {
             Ok(selected) => selected,
             Err(error) => {
                 self.set_status(format!("{error:#}"), true, cx);
@@ -730,7 +730,7 @@ impl AppView {
             move |control| {
                 super::overwrite::extract_with_confirmation(
                     &info,
-                    mzip::archive::ExtractOptions {
+                    hx6zip::archive::ExtractOptions {
                         destination: destination.clone(),
                         selected: Some(selected),
                         password,
@@ -762,7 +762,7 @@ impl AppView {
             cx,
             move |control| {
                 let entries =
-                    mzip::archive::export_entries(&info, &[path], password.as_deref(), &control)?;
+                    hx6zip::archive::export_entries(&info, &[path], password.as_deref(), &control)?;
                 Ok(super::JobOutput::Exported {
                     entries: Some(entries),
                     open: true,
@@ -848,7 +848,7 @@ impl AppView {
         self.explorer.loading = true;
         let worker_location = location.clone();
         let password = Self::password(&self.archive_password, cx);
-        let control = mzip::archive::JobControl::default()
+        let control = hx6zip::archive::JobControl::default()
             .with_password_prompt(self.password_prompt.clone());
         let cached_tree = match &location {
             Location::Archive { path, .. }
@@ -864,13 +864,13 @@ impl AppView {
                 if let Some(tree) = cached_tree {
                     return archive_file_entries(&tree, directory).map(|entries| (entries, None));
                 }
-                let info = mzip::archive::inspect_archive(
+                let info = hx6zip::archive::inspect_archive(
                     path,
                     password.as_deref(),
                     &control,
                 )?;
                 let tree =
-                    mzip::archive::ArchiveTree::new(&info, &control)?;
+                    hx6zip::archive::ArchiveTree::new(&info, &control)?;
                 let entries = archive_file_entries(&tree, directory)?;
                 Ok((entries, Some((info, tree))))
             } else {
@@ -1163,21 +1163,21 @@ impl AppView {
             FileAction::SevenZip => "--create-7z",
             FileAction::Add => "--add-to-archive",
             FileAction::Split => {
-                if !mzip_shell_protocol::can_split(&paths) {
+                if !hx6zip_shell_protocol::can_split(&paths) {
                     self.set_status("请选择一个文件进行分割。", true, cx);
                     return;
                 }
                 "--split-file"
             }
             FileAction::Merge => {
-                if !mzip_shell_protocol::can_merge(&paths) {
+                if !hx6zip_shell_protocol::can_merge(&paths) {
                     self.set_status("请选择同名且从 .001 开始的连续分片。", true, cx);
                     return;
                 }
                 "--merge-files"
             }
             FileAction::ExtractHere | FileAction::ExtractFolder | FileAction::ExtractTo => {
-                if !mzip_shell_protocol::can_extract_selection(&paths) {
+                if !hx6zip_shell_protocol::can_extract_selection(&paths) {
                     self.set_status("请选择一个可尝试解压的文件。", true, cx);
                     return;
                 }
@@ -1246,7 +1246,7 @@ impl AppView {
         let archive = paths.len() == 1
             && self.explorer.selected.first().is_some_and(|index| {
                 !self.explorer.entries[*index].directory
-                    && mzip_shell_protocol::can_attempt_extraction(&paths[0])
+                    && hx6zip_shell_protocol::can_attempt_extraction(&paths[0])
             });
         let compressible = selected && paths.iter().all(|path| path.file_name().is_some());
         for (label, action, enabled) in [
@@ -1292,12 +1292,12 @@ impl AppView {
             (
                 "分割文件",
                 FileAction::Split,
-                selected && mzip_shell_protocol::can_split(&paths),
+                selected && hx6zip_shell_protocol::can_split(&paths),
             ),
             (
                 "合并文件",
                 FileAction::Merge,
-                selected && mzip_shell_protocol::can_merge(&paths),
+                selected && hx6zip_shell_protocol::can_merge(&paths),
             ),
         ] {
             if visible {
@@ -1387,7 +1387,7 @@ impl AppView {
             .small()
             .label("帮助")
             .dropdown_menu(|menu, _, _| {
-                menu.item(PopupMenuItem::new("关于 MZip").on_click(|_, _, _| {
+                menu.item(PopupMenuItem::new("关于 Hx6Zip").on_click(|_, _, _| {
                     super::show_about();
                 }))
             });
@@ -1403,7 +1403,7 @@ impl AppView {
                 div()
                     .text_size(px(14.0))
                     .font_weight(FontWeight::BOLD)
-                    .child("MZip"),
+                    .child("Hx6Zip"),
             )
             .child(tools)
             .child(operations)
@@ -1518,7 +1518,7 @@ impl AppView {
             || (self.running.is_some() && self.job_kind != super::JobKind::Drag);
         let writable = self.archive.as_ref().is_some_and(|info| {
             matches!(info.format, ArchiveKind::Zip | ArchiveKind::SevenZip)
-                && mzip::archive::ArchiveFormat::from_path(&info.path).is_ok()
+                && hx6zip::archive::ArchiveFormat::from_path(&info.path).is_ok()
         });
         let view = cx.entity();
         let marquee_geometry = self
@@ -2015,10 +2015,10 @@ pub(super) fn launch_api_tester() -> Result<()> {
 }
 
 fn launch_task(flag: &str, paths: &[PathBuf]) -> Result<()> {
-    let executable = std::env::current_exe().context("无法确定 MZip 程序路径")?;
+    let executable = std::env::current_exe().context("无法确定 Hx6Zip 程序路径")?;
     #[cfg(windows)]
     {
-        use mzip_shell_protocol::{CompressionAction, launch_compression_paths};
+        use hx6zip_shell_protocol::{CompressionAction, launch_compression_paths};
         let action = match flag {
             "--create-zip" => Some(CompressionAction::Zip),
             "--create-each-zip" => Some(CompressionAction::EachZip),
@@ -2039,7 +2039,7 @@ fn launch_task(flag: &str, paths: &[PathBuf]) -> Result<()> {
         use std::os::windows::process::CommandExt;
         command.creation_flags(0x08000000);
     }
-    command.spawn().context("无法打开 MZip 操作窗口")?;
+    command.spawn().context("无法打开 Hx6Zip 操作窗口")?;
     Ok(())
 }
 
@@ -2153,7 +2153,7 @@ mod tests {
 
     #[gpui_kit::test]
     fn archive_opens_in_main_explorer_with_folder_navigation_and_history(cx: &mut TestAppContext) {
-        use mzip::archive::{
+        use hx6zip::archive::{
             ArchiveFormat, CreateOptions, JobControl, create_archive, inspect_archive,
         };
         let temp = tempfile::tempdir().unwrap();

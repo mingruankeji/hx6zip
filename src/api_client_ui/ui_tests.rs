@@ -348,7 +348,7 @@ fn request_menu_clone_example_copy_curl_and_info_execute(cx: &mut TestAppContext
         let command = cx.read_from_clipboard().unwrap().text().unwrap();
         assert_eq!(
             command,
-            mzip::api_client::generate_curl(&source, &Default::default()).unwrap()
+            hx6zip::api_client::generate_curl(&source, &Default::default()).unwrap()
         );
         assert_eq!(
             fixture.view.read(cx).response_status.as_deref(),
@@ -593,8 +593,8 @@ fn body_type_auth_and_settings_tabs_persist_request_options(cx: &mut TestAppCont
         window.click("setting-verify-tls", cx);
     });
     let saved = fixture.store.load().unwrap().0.remove(0);
-    assert_eq!(saved.body_type, mzip::api_client::BodyType::FormUrlEncoded);
-    assert_eq!(saved.auth.auth_type, mzip::api_client::AuthType::Bearer);
+    assert_eq!(saved.body_type, hx6zip::api_client::BodyType::FormUrlEncoded);
+    assert_eq!(saved.auth.auth_type, hx6zip::api_client::AuthType::Bearer);
     assert_eq!(saved.auth.token, "secret");
     assert_eq!(saved.settings.timeout_ms, 5000);
     assert!(!saved.settings.follow_redirects);
@@ -608,7 +608,7 @@ fn body_type_auth_and_settings_tabs_persist_request_options(cx: &mut TestAppCont
     });
     assert_eq!(
         fixture.store.load().unwrap().0[0].body_type,
-        mzip::api_client::BodyType::None
+        hx6zip::api_client::BodyType::None
     );
 }
 

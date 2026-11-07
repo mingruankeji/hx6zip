@@ -1,5 +1,5 @@
 [package]
-name = "mzip-shell-protocol"
+name = "hx6zip-shell-protocol"
 version = "0.1.1"
 edition = "2024"
 rust-version = "1.93"

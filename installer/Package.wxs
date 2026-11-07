@@ -1,33 +1,33 @@
-<?define MZipArchiveFilter = 'NOT System.ItemType:="Directory" AND NOT (System.FileExtension:=".txt" OR System.FileExtension:=".log" OR System.FileExtension:=".md" OR System.FileExtension:=".csv" OR System.FileExtension:=".json" OR System.FileExtension:=".xml" OR System.FileExtension:=".yaml" OR System.FileExtension:=".yml" OR System.FileExtension:=".toml" OR System.FileExtension:=".ini" OR System.FileExtension:=".cfg" OR System.FileExtension:=".rtf" OR System.FileExtension:=".pdf" OR System.FileExtension:=".htm" OR System.FileExtension:=".html" OR System.FileExtension:=".css" OR System.FileExtension:=".js" OR System.FileExtension:=".ts" OR System.FileExtension:=".jsx" OR System.FileExtension:=".tsx" OR System.FileExtension:=".c" OR System.FileExtension:=".h" OR System.FileExtension:=".cpp" OR System.FileExtension:=".hpp" OR System.FileExtension:=".rs" OR System.FileExtension:=".py" OR System.FileExtension:=".java" OR System.FileExtension:=".go" OR System.FileExtension:=".sql" OR System.FileExtension:=".bat" OR System.FileExtension:=".cmd" OR System.FileExtension:=".ps1" OR System.FileExtension:=".vbs" OR System.FileExtension:=".png" OR System.FileExtension:=".jpg" OR System.FileExtension:=".jpeg" OR System.FileExtension:=".gif" OR System.FileExtension:=".bmp" OR System.FileExtension:=".tif" OR System.FileExtension:=".tiff" OR System.FileExtension:=".ico" OR System.FileExtension:=".svg" OR System.FileExtension:=".webp" OR System.FileExtension:=".avif" OR System.FileExtension:=".mp3" OR System.FileExtension:=".wav" OR System.FileExtension:=".flac" OR System.FileExtension:=".aac" OR System.FileExtension:=".ogg" OR System.FileExtension:=".mp4" OR System.FileExtension:=".mkv" OR System.FileExtension:=".avi" OR System.FileExtension:=".mov" OR System.FileExtension:=".webm" OR System.FileExtension:=".wma" OR System.FileExtension:=".wmv" OR System.FileExtension:=".lnk" OR System.FileExtension:=".url")' ?>
-<?define MZipApplicationComponentGuid = "{948ECCD4-F668-5087-A380-8B4FEBC1855A}" ?>
+<?define Hx6ZipArchiveFilter = 'NOT System.ItemType:="Directory" AND NOT (System.FileExtension:=".txt" OR System.FileExtension:=".log" OR System.FileExtension:=".md" OR System.FileExtension:=".csv" OR System.FileExtension:=".json" OR System.FileExtension:=".xml" OR System.FileExtension:=".yaml" OR System.FileExtension:=".yml" OR System.FileExtension:=".toml" OR System.FileExtension:=".ini" OR System.FileExtension:=".cfg" OR System.FileExtension:=".rtf" OR System.FileExtension:=".pdf" OR System.FileExtension:=".htm" OR System.FileExtension:=".html" OR System.FileExtension:=".css" OR System.FileExtension:=".js" OR System.FileExtension:=".ts" OR System.FileExtension:=".jsx" OR System.FileExtension:=".tsx" OR System.FileExtension:=".c" OR System.FileExtension:=".h" OR System.FileExtension:=".cpp" OR System.FileExtension:=".hpp" OR System.FileExtension:=".rs" OR System.FileExtension:=".py" OR System.FileExtension:=".java" OR System.FileExtension:=".go" OR System.FileExtension:=".sql" OR System.FileExtension:=".bat" OR System.FileExtension:=".cmd" OR System.FileExtension:=".ps1" OR System.FileExtension:=".vbs" OR System.FileExtension:=".png" OR System.FileExtension:=".jpg" OR System.FileExtension:=".jpeg" OR System.FileExtension:=".gif" OR System.FileExtension:=".bmp" OR System.FileExtension:=".tif" OR System.FileExtension:=".tiff" OR System.FileExtension:=".ico" OR System.FileExtension:=".svg" OR System.FileExtension:=".webp" OR System.FileExtension:=".avif" OR System.FileExtension:=".mp3" OR System.FileExtension:=".wav" OR System.FileExtension:=".flac" OR System.FileExtension:=".aac" OR System.FileExtension:=".ogg" OR System.FileExtension:=".mp4" OR System.FileExtension:=".mkv" OR System.FileExtension:=".avi" OR System.FileExtension:=".mov" OR System.FileExtension:=".webm" OR System.FileExtension:=".wma" OR System.FileExtension:=".wmv" OR System.FileExtension:=".lnk" OR System.FileExtension:=".url")' ?>
+<?define Hx6ZipApplicationComponentGuid = "{948ECCD4-F668-5087-A380-8B4FEBC1855A}" ?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package
-    Name="MZip"
-    Manufacturer="MZip"
-    Version="$(var.MZipVersion)"
+    Name="Hx6Zip"
+    Manufacturer="Hx6Zip"
+    Version="$(var.Hx6ZipVersion)"
     UpgradeCode="{8E2127FA-0168-46AB-8C27-9454E1441591}"
     Scope="perUser">
     <MajorUpgrade
       AllowSameVersionUpgrades="yes"
       IgnoreLanguage="yes"
       Schedule="afterInstallExecute"
-      DowngradeErrorMessage="已安装更新版本的 MZip，无法安装此旧版本。" />
+      DowngradeErrorMessage="已安装更新版本的 Hx6Zip，无法安装此旧版本。" />
     <MediaTemplate EmbedCab="yes" />
-    <Icon Id="MZipIcon" SourceFile="$(var.MZipIcon)" />
-    <Property Id="ARPPRODUCTICON" Value="MZipIcon" />
+    <Icon Id="Hx6ZipIcon" SourceFile="$(var.Hx6ZipIcon)" />
+    <Property Id="ARPPRODUCTICON" Value="Hx6ZipIcon" />
     <Property Id="REINSTALLMODE" Value="amus" />
-    <Property Id="MZIP_PREVIOUS_INSTALLFOLDER">
-      <ComponentSearch Id="MZipPreviousFolderSearch"
-                       Guid="$(var.MZipApplicationComponentGuid)" Type="file" />
+    <Property Id="HX6ZIP_PREVIOUS_INSTALLFOLDER">
+      <ComponentSearch Id="Hx6ZipPreviousFolderSearch"
+                       Guid="$(var.Hx6ZipApplicationComponentGuid)" Type="file" />
     </Property>
     <Property Id="INSTALLFOLDER">
-      <RegistrySearch Id="MZipInstallFolderSearch" Root="HKCU"
-                      Key="Software\MZip" Name="InstallDir" Type="raw" />
+      <RegistrySearch Id="Hx6ZipInstallFolderSearch" Root="HKCU"
+                      Key="Software\Hx6Zip" Name="InstallDir" Type="raw" />
     </Property>
-    <SetProperty Id="INSTALLFOLDER" Value="[MZIP_PREVIOUS_INSTALLFOLDER]"
+    <SetProperty Id="INSTALLFOLDER" Value="[HX6ZIP_PREVIOUS_INSTALLFOLDER]"
                  After="AppSearch" Sequence="both"
-                 Condition="WIX_UPGRADE_DETECTED AND MZIP_PREVIOUS_INSTALLFOLDER" />
+                 Condition="WIX_UPGRADE_DETECTED AND HX6ZIP_PREVIOUS_INSTALLFOLDER" />
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
     <UI>
       <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog"
@@ -40,52 +40,52 @@
                Value="WelcomeDlg" Order="20" Condition="WIX_UPGRADE_DETECTED" />
     </UI>
 
-    <Feature Id="Main" Title="MZip" Level="1">
-      <ComponentRef Id="MZipApplication" />
-      <ComponentRef Id="MZipStartMenuShortcut" />
-      <ComponentRef Id="MZipShellIntegration" />
-      <ComponentRef Id="MZipFileAssociations" />
-      <ComponentRef Id="MZipModernMenu" />
-      <ComponentRef Id="MZipMenuScript" />
-      <ComponentRef Id="MZipNotices" />
-      <?if $(var.MZipHasSignedPackage) = 1 ?>
-      <ComponentRef Id="MZipSignedMenu" />
-      <ComponentRef Id="MZipSigningCertificate" />
+    <Feature Id="Main" Title="Hx6Zip" Level="1">
+      <ComponentRef Id="Hx6ZipApplication" />
+      <ComponentRef Id="Hx6ZipStartMenuShortcut" />
+      <ComponentRef Id="Hx6ZipShellIntegration" />
+      <ComponentRef Id="Hx6ZipFileAssociations" />
+      <ComponentRef Id="Hx6ZipModernMenu" />
+      <ComponentRef Id="Hx6ZipMenuScript" />
+      <ComponentRef Id="Hx6ZipNotices" />
+      <?if $(var.Hx6ZipHasSignedPackage) = 1 ?>
+      <ComponentRef Id="Hx6ZipSignedMenu" />
+      <ComponentRef Id="Hx6ZipSigningCertificate" />
       <?endif?>
     </Feature>
 
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="ProgramsFolder" Name="Programs">
-        <Directory Id="INSTALLFOLDER" Name="MZip">
-          <Component Id="MZipApplication" Guid="$(var.MZipApplicationComponentGuid)">
-            <File Id="MZipExecutable" Source="$(var.MZipExe)" KeyPath="yes" />
+        <Directory Id="INSTALLFOLDER" Name="Hx6Zip">
+          <Component Id="Hx6ZipApplication" Guid="$(var.Hx6ZipApplicationComponentGuid)">
+            <File Id="Hx6ZipExecutable" Source="$(var.Hx6ZipExe)" KeyPath="yes" />
           </Component>
 
-          <Component Id="MZipModernMenu" Guid="*">
-            <File Id="MZipShellDll" Name="MZipShell.dll" Source="$(var.MZipShellDll)" KeyPath="yes" />
+          <Component Id="Hx6ZipModernMenu" Guid="*">
+            <File Id="Hx6ZipShellDll" Name="Hx6ZipShell.dll" Source="$(var.Hx6ZipShellDll)" KeyPath="yes" />
           </Component>
 
-          <Component Id="MZipMenuScript" Guid="*">
-            <File Id="MZipMenuScriptFile" Name="Windows11Menu.ps1" Source="$(var.MZipMenuScript)" KeyPath="yes" />
+          <Component Id="Hx6ZipMenuScript" Guid="*">
+            <File Id="Hx6ZipMenuScriptFile" Name="Windows11Menu.ps1" Source="$(var.Hx6ZipMenuScript)" KeyPath="yes" />
           </Component>
 
-          <?if $(var.MZipHasSignedPackage) = 1 ?>
-          <Component Id="MZipSignedMenu" Guid="*">
-            <File Id="MZipMenuPackage" Name="MZip-Menu.msix" Source="$(var.MZipSparsePackage)" KeyPath="yes" />
+          <?if $(var.Hx6ZipHasSignedPackage) = 1 ?>
+          <Component Id="Hx6ZipSignedMenu" Guid="*">
+            <File Id="Hx6ZipMenuPackage" Name="Hx6Zip-Menu.msix" Source="$(var.Hx6ZipSparsePackage)" KeyPath="yes" />
           </Component>
-          <Component Id="MZipSigningCertificate" Guid="*">
-            <File Id="MZipMenuCertificate" Name="MZip-Development.cer" Source="$(var.MZipCertificate)" KeyPath="yes" />
+          <Component Id="Hx6ZipSigningCertificate" Guid="*">
+            <File Id="Hx6ZipMenuCertificate" Name="Hx6Zip-Development.cer" Source="$(var.Hx6ZipCertificate)" KeyPath="yes" />
           </Component>
           <?endif?>
 
-          <Component Id="MZipNotices" Guid="*">
-            <File Id="MZipThirdPartyNotices" Name="THIRD_PARTY_NOTICES.txt" Source="$(var.MZipNotices)" KeyPath="yes" />
+          <Component Id="Hx6ZipNotices" Guid="*">
+            <File Id="Hx6ZipThirdPartyNotices" Name="THIRD_PARTY_NOTICES.txt" Source="$(var.Hx6ZipNotices)" KeyPath="yes" />
           </Component>
 
-          <Component Id="MZipShellIntegration" Guid="*">
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip">
-              <RegistryValue Name="MUIVerb" Value="MZip" Type="string" KeyPath="yes" />
-              <RegistryValue Name="Icon" Value="[INSTALLFOLDER]mzip.exe,0" Type="string" />
+          <Component Id="Hx6ZipShellIntegration" Guid="*">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip">
+              <RegistryValue Name="MUIVerb" Value="Hx6Zip" Type="string" KeyPath="yes" />
+              <RegistryValue Name="Icon" Value="[INSTALLFOLDER]hx6zip.exe,0" Type="string" />
               <RegistryValue Name="SubCommands" Value="" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Player" Type="string" />
               <RegistryKey Key="shell\01.CreateZip">
@@ -105,255 +105,255 @@
               <RegistryKey Key="shell\03.OpenArchive">
                 <RegistryValue Name="MUIVerb" Value="打开和解压" Type="string" />
                 <RegistryValue Name="MultiSelectModel" Value="Single" Type="string" />
-                <RegistryValue Name="AppliesTo" Value="$(var.MZipArchiveFilter)" Type="string" />
+                <RegistryValue Name="AppliesTo" Value="$(var.Hx6ZipArchiveFilter)" Type="string" />
                 <RegistryKey Key="command">
-                  <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; &quot;%1&quot;" Type="string" />
+                  <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; &quot;%1&quot;" Type="string" />
                 </RegistryKey>
               </RegistryKey>
             </RegistryKey>
 
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\04.ExtractHere">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\04.ExtractHere">
               <RegistryValue Name="MUIVerb" Value="解压到当前文件夹" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Single" Type="string" />
-              <RegistryValue Name="AppliesTo" Value="$(var.MZipArchiveFilter)" Type="string" />
+              <RegistryValue Name="AppliesTo" Value="$(var.Hx6ZipArchiveFilter)" Type="string" />
               <RegistryKey Key="command">
-                <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --extract-here &quot;%1&quot;" Type="string" />
+                <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --extract-here &quot;%1&quot;" Type="string" />
               </RegistryKey>
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\05.ExtractFolder">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\05.ExtractFolder">
               <RegistryValue Name="MUIVerb" Value="解压到压缩文件名文件夹" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Single" Type="string" />
-              <RegistryValue Name="AppliesTo" Value="$(var.MZipArchiveFilter)" Type="string" />
+              <RegistryValue Name="AppliesTo" Value="$(var.Hx6ZipArchiveFilter)" Type="string" />
               <RegistryKey Key="command">
-                <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --extract-folder &quot;%1&quot;" Type="string" />
+                <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --extract-folder &quot;%1&quot;" Type="string" />
               </RegistryKey>
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\06.AddToArchive">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\06.AddToArchive">
               <RegistryValue Name="MUIVerb" Value="添加到压缩文件" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Player" Type="string" />
               <RegistryKey Key="command">
                 <RegistryValue Name="DelegateExecute" Value="{1252546F-25DA-49CC-B862-A443BA0D0E15}" Type="string" />
               </RegistryKey>
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\07.ExtractTo">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\07.ExtractTo">
               <RegistryValue Name="MUIVerb" Value="解压到" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Single" Type="string" />
-              <RegistryValue Name="AppliesTo" Value="$(var.MZipArchiveFilter)" Type="string" />
+              <RegistryValue Name="AppliesTo" Value="$(var.Hx6ZipArchiveFilter)" Type="string" />
               <RegistryKey Key="command">
-                <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --extract-to &quot;%1&quot;" Type="string" />
+                <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --extract-to &quot;%1&quot;" Type="string" />
               </RegistryKey>
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\08.SplitFile">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\08.SplitFile">
               <RegistryValue Name="MUIVerb" Value="分割文件" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Single" Type="string" />
               <RegistryValue Name="ExplorerCommandHandler" Value="{F4774D42-41E4-4AC8-B964-9A37688AE101}" Type="string" />
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\09.MergeFiles">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\09.MergeFiles">
               <RegistryValue Name="MUIVerb" Value="合并文件" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Player" Type="string" />
               <RegistryValue Name="ExplorerCommandHandler" Value="{F4774D42-41E4-4AC8-B964-9A37688AE102}" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\CLSID\{F4774D42-41E4-4AC8-B964-9A37688AE101}\InprocServer32">
-              <RegistryValue Value="[INSTALLFOLDER]MZipShell.dll" Type="string" />
+              <RegistryValue Value="[INSTALLFOLDER]Hx6ZipShell.dll" Type="string" />
               <RegistryValue Name="ThreadingModel" Value="Apartment" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\CLSID\{F4774D42-41E4-4AC8-B964-9A37688AE102}\InprocServer32">
-              <RegistryValue Value="[INSTALLFOLDER]MZipShell.dll" Type="string" />
+              <RegistryValue Value="[INSTALLFOLDER]Hx6ZipShell.dll" Type="string" />
               <RegistryValue Name="ThreadingModel" Value="Apartment" Type="string" />
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\10.CreateEachZip">
+            <RegistryKey Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\10.CreateEachZip">
               <RegistryValue Name="MUIVerb" Value="压缩每个到单独的压缩包中" Type="string" />
               <RegistryValue Name="MultiSelectModel" Value="Player" Type="string" />
               <RegistryKey Key="command">
                 <RegistryValue Name="DelegateExecute" Value="{F4774D42-41E4-4AC8-B964-9A37688AE104}" Type="string" />
               </RegistryKey>
             </RegistryKey>
-            <RemoveRegistryValue Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\10.CreateEachZip" Name="ExplorerCommandHandler" />
+            <RemoveRegistryValue Root="HKCU" Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\10.CreateEachZip" Name="ExplorerCommandHandler" />
             <RegistryKey Root="HKCU" Key="Software\Classes\CLSID\{F4774D42-41E4-4AC8-B964-9A37688AE103}\InprocServer32">
-              <RegistryValue Value="[INSTALLFOLDER]MZipShell.dll" Type="string" />
+              <RegistryValue Value="[INSTALLFOLDER]Hx6ZipShell.dll" Type="string" />
               <RegistryValue Name="ThreadingModel" Value="Apartment" Type="string" />
             </RegistryKey>
 
-            <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\MZip">
-              <RegistryValue Name="MUIVerb" Value="MZip" Type="string" />
-              <RegistryValue Name="Icon" Value="[INSTALLFOLDER]mzip.exe,0" Type="string" />
+            <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\Hx6Zip">
+              <RegistryValue Name="MUIVerb" Value="Hx6Zip" Type="string" />
+              <RegistryValue Name="Icon" Value="[INSTALLFOLDER]hx6zip.exe,0" Type="string" />
               <RegistryValue Name="SubCommands" Value="" Type="string" />
               <RegistryKey Key="shell\01.CreateZip">
                 <RegistryValue Name="MUIVerb" Value="创建 ZIP 压缩包" Type="string" />
                 <RegistryKey Key="command">
-                  <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --create-zip &quot;%V&quot;" Type="string" />
+                  <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --create-zip &quot;%V&quot;" Type="string" />
                 </RegistryKey>
               </RegistryKey>
               <RegistryKey Key="shell\02.Create7z">
                 <RegistryValue Name="MUIVerb" Value="创建 7z 压缩包" Type="string" />
                 <RegistryKey Key="command">
-                  <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --create-7z &quot;%V&quot;" Type="string" />
+                  <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --create-7z &quot;%V&quot;" Type="string" />
                 </RegistryKey>
               </RegistryKey>
               <RegistryKey Key="shell\03.AddToArchive">
                 <RegistryValue Name="MUIVerb" Value="添加到压缩文件" Type="string" />
                 <RegistryKey Key="command">
-                  <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --add-to-archive &quot;%V&quot;" Type="string" />
+                  <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --add-to-archive &quot;%V&quot;" Type="string" />
                 </RegistryKey>
               </RegistryKey>
             </RegistryKey>
 
             <RegistryKey Root="HKCU" Key="Software\Classes\CLSID\{DC99DB75-8A46-4D65-9F25-329FDFCB0C60}\LocalServer32">
-              <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --shell-server" Type="string" />
-              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]mzip.exe" Type="string" />
+              <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --shell-server" Type="string" />
+              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]hx6zip.exe" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\CLSID\{C58AD8E4-E793-4374-A2D2-76054397C012}\LocalServer32">
-              <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --shell-server" Type="string" />
-              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]mzip.exe" Type="string" />
+              <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --shell-server" Type="string" />
+              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]hx6zip.exe" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\CLSID\{1252546F-25DA-49CC-B862-A443BA0D0E15}\LocalServer32">
-              <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --shell-server" Type="string" />
-              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]mzip.exe" Type="string" />
+              <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --shell-server" Type="string" />
+              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]hx6zip.exe" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\CLSID\{F4774D42-41E4-4AC8-B964-9A37688AE104}\LocalServer32">
-              <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; --shell-server" Type="string" />
-              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]mzip.exe" Type="string" />
+              <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; --shell-server" Type="string" />
+              <RegistryValue Name="ServerExecutable" Value="[INSTALLFOLDER]hx6zip.exe" Type="string" />
             </RegistryKey>
           </Component>
 
-          <Component Id="MZipFileAssociations" Guid="*">
-            <RegistryKey Root="HKCU" Key="Software\Classes\MZip.Archive.1">
-              <RegistryValue Value="MZip 压缩文件" Type="string" />
+          <Component Id="Hx6ZipFileAssociations" Guid="*">
+            <RegistryKey Root="HKCU" Key="Software\Classes\Hx6Zip.Archive.1">
+              <RegistryValue Value="Hx6Zip 压缩文件" Type="string" />
               <RegistryKey Key="DefaultIcon">
-                <RegistryValue Value="[INSTALLFOLDER]mzip.exe,0" Type="string" />
+                <RegistryValue Value="[INSTALLFOLDER]hx6zip.exe,0" Type="string" />
               </RegistryKey>
               <RegistryKey Key="shell\open\command">
-                <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; &quot;%1&quot;" Type="string" />
+                <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; &quot;%1&quot;" Type="string" />
               </RegistryKey>
             </RegistryKey>
 
-            <RegistryKey Root="HKCU" Key="Software\Classes\Applications\mzip.exe">
-              <RegistryValue Name="FriendlyAppName" Value="MZip" Type="string" />
+            <RegistryKey Root="HKCU" Key="Software\Classes\Applications\hx6zip.exe">
+              <RegistryValue Name="FriendlyAppName" Value="Hx6Zip" Type="string" />
               <RegistryKey Key="shell\open\command">
-                <RegistryValue Value="&quot;[INSTALLFOLDER]mzip.exe&quot; &quot;%1&quot;" Type="string" />
+                <RegistryValue Value="&quot;[INSTALLFOLDER]hx6zip.exe&quot; &quot;%1&quot;" Type="string" />
               </RegistryKey>
             </RegistryKey>
 
-            <RegistryKey Root="HKCU" Key="Software\MZip\Capabilities">
-              <RegistryValue Name="ApplicationName" Value="MZip" Type="string" KeyPath="yes" />
+            <RegistryKey Root="HKCU" Key="Software\Hx6Zip\Capabilities">
+              <RegistryValue Name="ApplicationName" Value="Hx6Zip" Type="string" KeyPath="yes" />
               <RegistryValue Name="ApplicationDescription" Value="浏览和解压压缩文件" Type="string" />
-              <RegistryValue Name="ApplicationIcon" Value="[INSTALLFOLDER]mzip.exe,0" Type="string" />
+              <RegistryValue Name="ApplicationIcon" Value="[INSTALLFOLDER]hx6zip.exe,0" Type="string" />
               <RegistryKey Key="FileAssociations">
-                <RegistryValue Name=".zip" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".zipx" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".jar" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".odt" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".ods" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".odp" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".odg" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".odf" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".odb" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".sxw" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".sxc" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".sxi" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".sxd" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".7z" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".cab" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".rar" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".iso" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".tar" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".gz" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".tgz" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".bz2" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".tbz" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".tbz2" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".xz" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".txz" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".zst" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".zstd" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".tzst" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".br" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".brotli" Value="MZip.Archive.1" Type="string" />
-                <RegistryValue Name=".tbr" Value="MZip.Archive.1" Type="string" />
+                <RegistryValue Name=".zip" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".zipx" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".jar" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".odt" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".ods" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".odp" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".odg" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".odf" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".odb" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".sxw" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".sxc" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".sxi" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".sxd" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".7z" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".cab" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".rar" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".iso" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".tar" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".gz" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".tgz" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".bz2" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".tbz" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".tbz2" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".xz" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".txz" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".zst" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".zstd" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".tzst" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".br" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".brotli" Value="Hx6Zip.Archive.1" Type="string" />
+                <RegistryValue Name=".tbr" Value="Hx6Zip.Archive.1" Type="string" />
               </RegistryKey>
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\RegisteredApplications">
-              <RegistryValue Name="MZip" Value="Software\MZip\Capabilities" Type="string" />
+              <RegistryValue Name="Hx6Zip" Value="Software\Hx6Zip\Capabilities" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.zip\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.zipx\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.jar\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.odt\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.ods\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.odp\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.odg\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.odf\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.odb\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.sxw\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.sxc\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.sxi\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.sxd\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.zipx\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.jar\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.odt\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.ods\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.odp\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.odg\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.odf\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.odb\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.sxw\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.sxc\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.sxi\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.sxd\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.7z\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.cab\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.rar\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.iso\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.iso\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.tar\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.gz\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.tgz\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.bz2\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.tbz\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.tbz2\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.xz\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.txz\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.zst\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.zstd\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.zstd\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
             <RegistryKey Root="HKCU" Key="Software\Classes\.tzst\OpenWithProgids">
-              <RegistryValue Name="MZip.Archive.1" Value="" Type="string" />
+              <RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" />
             </RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.br\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.brotli\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
-            <RegistryKey Root="HKCU" Key="Software\Classes\.tbr\OpenWithProgids"><RegistryValue Name="MZip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.br\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.brotli\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
+            <RegistryKey Root="HKCU" Key="Software\Classes\.tbr\OpenWithProgids"><RegistryValue Name="Hx6Zip.Archive.1" Value="" Type="string" /></RegistryKey>
           </Component>
         </Directory>
       </Directory>
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
-      <Directory Id="MZipProgramMenuFolder" Name="MZip">
-        <Component Id="MZipStartMenuShortcut" Directory="MZipProgramMenuFolder" Guid="*">
+      <Directory Id="Hx6ZipProgramMenuFolder" Name="Hx6Zip">
+        <Component Id="Hx6ZipStartMenuShortcut" Directory="Hx6ZipProgramMenuFolder" Guid="*">
           <Shortcut
-            Id="MZipStartMenuShortcut"
-            Name="MZip"
-            Target="[INSTALLFOLDER]mzip.exe"
-            Icon="MZipIcon"
+            Id="Hx6ZipStartMenuShortcut"
+            Name="Hx6Zip"
+            Target="[INSTALLFOLDER]hx6zip.exe"
+            Icon="Hx6ZipIcon"
             IconIndex="0"
             WorkingDirectory="INSTALLFOLDER">
-            <ShortcutProperty Key="System.AppUserModel.ID" Value="MZip.Desktop" />
+            <ShortcutProperty Key="System.AppUserModel.ID" Value="Hx6Zip.Desktop" />
           </Shortcut>
-          <RemoveFolder Id="RemoveMZipProgramMenuFolder" On="uninstall" />
-          <RegistryValue Root="HKCU" Key="Software\MZip" Name="Installed" Value="1" Type="integer" KeyPath="yes" />
-          <RegistryValue Root="HKCU" Key="Software\MZip" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
+          <RemoveFolder Id="RemoveHx6ZipProgramMenuFolder" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\Hx6Zip" Name="Installed" Value="1" Type="integer" KeyPath="yes" />
+          <RegistryValue Root="HKCU" Key="Software\Hx6Zip" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
         </Component>
       </Directory>
     </StandardDirectory>
@@ -365,7 +365,7 @@
       Execute="commit"
       Impersonate="yes"
       Return="check" />
-    <?if $(var.MZipHasSignedPackage) = 1 ?>
+    <?if $(var.Hx6ZipHasSignedPackage) = 1 ?>
     <CustomAction
       Id="RegisterWindows11Menu"
       Directory="SystemFolder"
@@ -374,18 +374,18 @@
       Impersonate="yes"
       Return="ignore" />
     <CustomAction
-      Id="RemoveMZipCertificateTrust"
+      Id="RemoveHx6ZipCertificateTrust"
       Directory="SystemFolder"
-      ExeCommand="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand $(var.MZipRemoveTrustCommand)"
+      ExeCommand="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand $(var.Hx6ZipRemoveTrustCommand)"
       Execute="commit"
       Impersonate="yes"
       Return="ignore" />
     <?endif?>
     <InstallExecuteSequence>
       <Custom Action="UnregisterWindows11Menu" After="RemoveFiles" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
-      <?if $(var.MZipHasSignedPackage) = 1 ?>
+      <?if $(var.Hx6ZipHasSignedPackage) = 1 ?>
       <Custom Action="RegisterWindows11Menu" After="InstallFiles" Condition="NOT REMOVE=&quot;ALL&quot;" />
-      <Custom Action="RemoveMZipCertificateTrust" After="UnregisterWindows11Menu" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="RemoveHx6ZipCertificateTrust" After="UnregisterWindows11Menu" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <?endif?>
     </InstallExecuteSequence>
   </Package>

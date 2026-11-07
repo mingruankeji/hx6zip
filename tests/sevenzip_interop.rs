@@ -5,7 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveEdit, ArchiveFormat, CreateOptions, ExtractOptions, JobControl, create_archive,
     edit_archive, extract_archive, inspect_archive,
 };
@@ -14,7 +14,7 @@ use tempfile::TempDir;
 
 mod support;
 
-const PASSWORD: &str = "MZip-interop-test";
+const PASSWORD: &str = "Hx6Zip-interop-test";
 
 #[test]
 #[ignore = "requires a 7-Zip-compatible 7z command on PATH"]
@@ -112,7 +112,7 @@ fn archives_are_interoperable_with_7zip_in_both_directions() {
     for format in [ArchiveFormat::Zip, ArchiveFormat::SevenZip] {
         let archive = directory
             .path()
-            .join(format!("mzip.{}", format.extension()));
+            .join(format!("hx6zip.{}", format.extension()));
         create_archive(
             &CreateOptions {
                 sources: vec![source.clone()],
@@ -125,11 +125,11 @@ fn archives_are_interoperable_with_7zip_in_both_directions() {
         )
         .unwrap();
         let name = archive.file_name().unwrap().to_str().unwrap();
-        run_7z(directory.path(), &["t", "-pMZip-interop-test", name]);
-        let output = format!("from-mzip-{}", format.extension());
+        run_7z(directory.path(), &["t", "-pHx6Zip-interop-test", name]);
+        let output = format!("from-hx6zip-{}", format.extension());
         run_7z(
             directory.path(),
-            &["x", "-pMZip-interop-test", &format!("-o{output}"), name],
+            &["x", "-pHx6Zip-interop-test", &format!("-o{output}"), name],
         );
         let extracted = directory
             .path()
@@ -156,7 +156,7 @@ fn archives_are_interoperable_with_7zip_in_both_directions() {
             "-t7z",
             "-ms=on",
             "-mhe=on",
-            "-pMZip-interop-test",
+            "-pHx6Zip-interop-test",
             "external.7z",
             "input",
         ],
@@ -167,7 +167,7 @@ fn archives_are_interoperable_with_7zip_in_both_directions() {
             "a",
             "-tzip",
             "-mem=AES256",
-            "-pMZip-interop-test",
+            "-pHx6Zip-interop-test",
             "external.zip",
             "input",
         ],
@@ -202,7 +202,7 @@ fn archives_are_interoperable_with_7zip_in_both_directions() {
             } else {
                 modified
             },
-            "{extension} timestamp when extracted by MZip"
+            "{extension} timestamp when extracted by Hx6Zip"
         );
         assert_eq!(
             fs::read(destination.join("input").join("beta.txt")).unwrap(),
@@ -277,8 +277,8 @@ fn filtered_sevenzip_archives_are_interoperable_with_7zip() {
         let mut test_args = vec!["t"];
         let mut extract_args = vec!["x"];
         if password.is_some() {
-            test_args.push("-pMZip-interop-test");
-            extract_args.push("-pMZip-interop-test");
+            test_args.push("-pHx6Zip-interop-test");
+            extract_args.push("-pHx6Zip-interop-test");
         }
         test_args.push(&archive_name);
         extract_args.extend([output_arg.as_str(), archive_name.as_str()]);
@@ -314,13 +314,13 @@ fn filtered_large_sevenzip_is_interoperable_with_7zip() {
     .unwrap();
     run_7z(
         directory.path(),
-        &["t", "-pMZip-interop-test", archive_name],
+        &["t", "-pHx6Zip-interop-test", archive_name],
     );
     run_7z(
         directory.path(),
         &[
             "x",
-            "-pMZip-interop-test",
+            "-pHx6Zip-interop-test",
             "-ofiltered-large-output",
             archive_name,
         ],
@@ -391,11 +391,11 @@ fn parallel_archives_are_interoperable_with_7zip() {
         )
         .unwrap();
         let name = archive.file_name().unwrap().to_str().unwrap();
-        run_7z(directory.path(), &["t", "-pMZip-interop-test", name]);
+        run_7z(directory.path(), &["t", "-pHx6Zip-interop-test", name]);
         let output = format!("parallel-out-{name}");
         run_7z(
             directory.path(),
-            &["x", "-pMZip-interop-test", &format!("-o{output}"), name],
+            &["x", "-pHx6Zip-interop-test", &format!("-o{output}"), name],
         );
         for source in inputs {
             assert_eq!(
@@ -420,7 +420,7 @@ fn parallel_archives_are_interoperable_with_7zip() {
             "-mmt=4",
             "-ms=off",
             "-mhe=on",
-            "-pMZip-interop-test",
+            "-pHx6Zip-interop-test",
             "external-large.7z",
             "large.bin",
         ],

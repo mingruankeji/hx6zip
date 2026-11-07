@@ -75,7 +75,7 @@ fn all_window_types_set_large_and_small_application_icons() {
         vec!["--api-tester".into()],
     ] {
         let mut process = TestProcess(
-            Command::new(env!("CARGO_BIN_EXE_mzip"))
+            Command::new(env!("CARGO_BIN_EXE_hx6zip"))
                 .args(&args)
                 .spawn()
                 .unwrap(),
@@ -101,13 +101,13 @@ fn all_window_types_set_large_and_small_application_icons() {
                 let icons = [ICON_BIG, ICON_SMALL].map(|kind| unsafe {
                     SendMessageW(window, WM_GETICON, Some(WPARAM(kind as usize)), None).0
                 });
-                if icons.iter().all(|icon| *icon != 0) && window_app_id(window) == "MZip.Desktop" {
+                if icons.iter().all(|icon| *icon != 0) && window_app_id(window) == "Hx6Zip.Desktop" {
                     break window;
                 }
             }
             assert!(
                 Instant::now() < deadline,
-                "window did not expose both application icons and the MZip taskbar identity: {args:?}"
+                "window did not expose both application icons and the Hx6Zip taskbar identity: {args:?}"
             );
             thread::sleep(Duration::from_millis(50));
         };

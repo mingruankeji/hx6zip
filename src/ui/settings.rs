@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use directories::BaseDirs;
-use mzip::archive::IntegrityMode;
+use hx6zip::archive::IntegrityMode;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -23,7 +23,7 @@ struct StoredSettings {
 }
 
 pub(super) fn settings_path() -> Option<PathBuf> {
-    BaseDirs::new().map(|base| base.data_local_dir().join("MZip").join("settings.json"))
+    BaseDirs::new().map(|base| base.data_local_dir().join("Hx6Zip").join("settings.json"))
 }
 
 /// Missing or unreadable settings fall back to fast mode.

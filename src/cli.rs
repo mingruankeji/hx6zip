@@ -217,5 +217,9 @@ mod tests {
             default_archive_path(Path::new(r"C:\files\source.zip"), ArchiveFormat::SevenZip),
             Some(PathBuf::from(r"C:\files\source.7z"))
         );
+        assert_eq!(
+            default_archive_path(Path::new(r"C:\files\source.zip"), ArchiveFormat::Tar),
+            Some(PathBuf::from(r"C:\files\source.tar"))
+        );
     }
 }

@@ -5,8 +5,8 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail, ensure};
-pub use mzip_shell_protocol::read_sources;
-use mzip_shell_protocol::{CompressionAction, launch_compression};
+pub use hx6zip_shell_protocol::read_sources;
+use hx6zip_shell_protocol::{CompressionAction, launch_compression};
 use windows::{
     Win32::{
         Foundation::{CLASS_E_NOAGGREGATION, E_FAIL, E_INVALIDARG, E_POINTER, POINT},
@@ -36,7 +36,7 @@ pub const CONFIGURE_COMMAND: GUID = GUID::from_u128(0x1252546f_25da_49cc_b862_a4
 pub const EACH_ZIP_COMMAND: GUID = GUID::from_u128(0xf4774d42_41e4_4ac8_b964_9a37688ae104);
 
 fn launch_selection(selection: &IShellItemArray, action: CompressionAction) -> Result<()> {
-    let executable = std::env::current_exe().context("无法定位 MZip 程序")?;
+    let executable = std::env::current_exe().context("无法定位 Hx6Zip 程序")?;
     launch_compression(&executable, selection, action)
 }
 
@@ -130,7 +130,7 @@ impl IExecuteCommand_Impl for ShellCommand_Impl {
                 MessageBoxW(
                     None,
                     PCWSTR(wide.as_ptr()),
-                    w!("MZip"),
+                    w!("Hx6Zip"),
                     MB_OK | MB_ICONERROR,
                 )
             };
@@ -191,7 +191,7 @@ struct Registration(u32);
 impl Drop for Registration {
     fn drop(&mut self) {
         if let Err(error) = unsafe { CoRevokeClassObject(self.0) } {
-            eprintln!("MZip: unable to revoke Shell class: {error}");
+            eprintln!("Hx6Zip: unable to revoke Shell class: {error}");
         }
     }
 }
@@ -252,13 +252,13 @@ pub fn run_server() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mzip_shell_protocol::encode_sources;
+    use hx6zip_shell_protocol::encode_sources;
     use std::path::PathBuf;
 
     #[test]
     fn installer_uses_delegate_execute_for_separate_zip_and_removes_legacy_handler() {
         let installer = include_str!(r"..\installer\Package.wxs");
-        let key = r"Software\Classes\AllFilesystemObjects\shell\MZip\shell\10.CreateEachZip";
+        let key = r"Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\10.CreateEachZip";
         let section = installer
             .split_once(&format!(r#"Key="{key}">"#))
             .unwrap()
@@ -282,7 +282,7 @@ mod tests {
             .next()
             .unwrap();
         assert!(server.contains("--shell-server"));
-        assert!(server.contains(r#"Name="ServerExecutable" Value="[INSTALLFOLDER]mzip.exe""#));
+        assert!(server.contains(r#"Name="ServerExecutable" Value="[INSTALLFOLDER]hx6zip.exe""#));
         assert!(installer.contains(&format!(
             r#"<RemoveRegistryValue Root="HKCU" Key="{key}" Name="ExplorerCommandHandler" />"#
         )));

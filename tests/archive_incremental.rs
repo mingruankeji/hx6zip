@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveEdit, ArchiveFormat, CancellationToken, CreateOptions, IntegrityMode, JobControl,
     create_archive, edit_archive, export_entries, inspect_archive,
 };

@@ -322,7 +322,7 @@ mod tests {
         unsafe { OleInitialize(None).unwrap() };
         let _apartment = super::super::OleApartment;
         let expected =
-            PathBuf::from(std::env::var_os("MZIP_DRAG_PROBE_DIRECTORY").expect("probe path"));
+            PathBuf::from(std::env::var_os("HX6ZIP_DRAG_PROBE_DIRECTORY").expect("probe path"));
         let windows: IShellWindows =
             unsafe { CoCreateInstance(&ShellWindows, None, CLSCTX_ALL).unwrap() };
         let mut found = false;
@@ -372,7 +372,7 @@ mod tests {
                 x: rect.right - 40,
                 y: rect.bottom - 40,
             };
-            let names = [PathBuf::from("MZipDragProbe")];
+            let names = [PathBuf::from("Hx6ZipDragProbe")];
             let under = unsafe { WindowFromPoint(point) };
             let probe: IUIAutomation2 =
                 unsafe { CoCreateInstance(&CUIAutomation8, None, CLSCTX_ALL).unwrap() };

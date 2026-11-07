@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveInfo, CancellationToken, ExtractOptions, IntegrityMode, JobControl, archive_selection,
     drag_conflicts, extract_archive, extract_conflicts, extract_drag_entries,
 };

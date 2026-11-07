@@ -1,6 +1,6 @@
 #![cfg(windows)]
 
-use mzip::archive::{ArchiveFormat, JobControl, inspect_archive};
+use hx6zip::archive::{ArchiveFormat, JobControl, inspect_archive};
 use std::{
     fs,
     path::Path,
@@ -67,6 +67,7 @@ fn invoke(sources: &[impl AsRef<Path>], format: ArchiveFormat) {
         match format {
             ArchiveFormat::Zip => "创建 ZIP 压缩包",
             ArchiveFormat::SevenZip => "创建 7z 压缩包",
+            ArchiveFormat::Tar => "创建 TAR 压缩包",
         },
     );
 }
@@ -103,15 +104,15 @@ fn invoke_named(sources: &[impl AsRef<Path>], expected: &str) {
             .ok()
             .unwrap();
         let root_positions: Vec<_> = (0..GetMenuItemCount(Some(menu.0)))
-            .filter(|index| label(menu.0, *index) == "MZip")
+            .filter(|index| label(menu.0, *index) == "Hx6Zip")
             .collect();
         assert_eq!(
             root_positions.len(),
             1,
-            "MZip must have exactly one top-level menu"
+            "Hx6Zip must have exactly one top-level menu"
         );
         let submenu = GetSubMenu(menu.0, root_positions[0]);
-        assert!(!submenu.is_invalid(), "MZip is not a cascading menu");
+        assert!(!submenu.is_invalid(), "Hx6Zip is not a cascading menu");
         if let Ok(handler) = context.cast::<IContextMenu2>() {
             handler
                 .HandleMenuMsg(
@@ -130,7 +131,7 @@ fn invoke_named(sources: &[impl AsRef<Path>], expected: &str) {
         );
         let should_offer_open = sources.len() == 1
             && sources[0].as_ref().is_file()
-            && mzip_shell_protocol::can_attempt_extraction(sources[0].as_ref());
+            && hx6zip_shell_protocol::can_attempt_extraction(sources[0].as_ref());
         assert_eq!(
             names.iter().any(|name| name == "打开和解压"),
             should_offer_open,
@@ -159,10 +160,10 @@ impl Drop for TestProcess {
     fn drop(&mut self) {
         if self.0.try_wait().is_ok_and(|status| status.is_none()) {
             if let Err(error) = self.0.kill() {
-                eprintln!("unable to stop test MZip process: {error}");
+                eprintln!("unable to stop test Hx6Zip process: {error}");
             }
             if let Err(error) = self.0.wait() {
-                eprintln!("unable to wait for test MZip process: {error}");
+                eprintln!("unable to wait for test Hx6Zip process: {error}");
             }
         }
     }
@@ -200,7 +201,7 @@ fn separate_zip_delegate_accepts_a_complete_shell_selection() {
     let pointers: Vec<_> = pidls.iter().map(|pidl| pidl.0.cast_const()).collect();
     let selection = unsafe { SHCreateShellItemArrayFromIDLists(&pointers).unwrap() };
     let mut server = TestProcess(
-        Command::new(env!("CARGO_BIN_EXE_mzip"))
+        Command::new(env!("CARGO_BIN_EXE_hx6zip"))
             .arg("--shell-server")
             .spawn()
             .unwrap(),
@@ -208,7 +209,7 @@ fn separate_zip_delegate_accepts_a_complete_shell_selection() {
     let deadline = Instant::now() + Duration::from_secs(15);
     let command: IExecuteCommand = loop {
         let result =
-            unsafe { CoCreateInstance(&mzip::shell::EACH_ZIP_COMMAND, None, CLSCTX_LOCAL_SERVER) };
+            unsafe { CoCreateInstance(&hx6zip::shell::EACH_ZIP_COMMAND, None, CLSCTX_LOCAL_SERVER) };
         match result {
             Ok(command) => break command,
             Err(error) => {
@@ -224,7 +225,7 @@ fn separate_zip_delegate_accepts_a_complete_shell_selection() {
             }
         }
     };
-    let _window = ProgressWindow("MZip - 压缩每个到单独的压缩包中".into());
+    let _window = ProgressWindow("Hx6Zip - 压缩每个到单独的压缩包中".into());
     unsafe {
         command
             .cast::<IObjectWithSelection>()
@@ -279,7 +280,7 @@ fn explorer_menu_separately_compresses_a_large_mixed_selection() {
     fs::create_dir(&folder).unwrap();
     fs::write(folder.join("nested.txt"), b"nested").unwrap();
     sources.push(folder);
-    let _window = ProgressWindow("MZip - 压缩每个到单独的压缩包中".into());
+    let _window = ProgressWindow("Hx6Zip - 压缩每个到单独的压缩包中".into());
     invoke_named(&sources, "压缩每个到单独的压缩包中");
     let deadline = Instant::now() + Duration::from_secs(30);
     while sources
@@ -319,7 +320,7 @@ fn separate_zip_cli_and_shell_pipe_create_one_archive_per_selection() {
         fs::create_dir(&folder).unwrap();
         fs::write(folder.join("nested.txt"), b"nested").unwrap();
         sources.push(folder);
-        let mut command = Command::new(env!("CARGO_BIN_EXE_mzip"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_hx6zip"));
         if pipe {
             command.arg("--shell-create-each-zip").stdin(Stdio::piped());
         } else {
@@ -327,7 +328,7 @@ fn separate_zip_cli_and_shell_pipe_create_one_archive_per_selection() {
         }
         let mut process = TestProcess(command.spawn().unwrap());
         if pipe {
-            let payload = mzip_shell_protocol::encode_sources(&sources).unwrap();
+            let payload = hx6zip_shell_protocol::encode_sources(&sources).unwrap();
             process.0.stdin.take().unwrap().write_all(&payload).unwrap();
         }
         let deadline = Instant::now() + Duration::from_secs(30);
@@ -344,7 +345,7 @@ fn separate_zip_cli_and_shell_pipe_create_one_archive_per_selection() {
         );
         assert_eq!(fs::read_dir(&directory).unwrap().count(), sources.len() * 2);
         for source in sources {
-            let output = mzip::cli::default_archive_path(&source, ArchiveFormat::Zip).unwrap();
+            let output = hx6zip::cli::default_archive_path(&source, ArchiveFormat::Zip).unwrap();
             let info = inspect_archive(&output, None, &JobControl::default()).unwrap();
             assert_eq!(info.entries.len(), if source.is_dir() { 2 } else { 1 });
             if source.is_file() {
@@ -377,7 +378,7 @@ fn file_parts_cli_merges_reverse_selection_and_shell_pipe() {
         let part2 = directory.join("资料.bin.002");
         fs::write(&part1, b"first").unwrap();
         fs::write(&part2, b"second").unwrap();
-        let mut command = Command::new(env!("CARGO_BIN_EXE_mzip"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_hx6zip"));
         if pipe {
             command.arg("--shell-merge-files").stdin(Stdio::piped());
         } else {
@@ -389,7 +390,7 @@ fn file_parts_cli_merges_reverse_selection_and_shell_pipe() {
         }
         let mut process = TestProcess(command.spawn().unwrap());
         if pipe {
-            let payload = mzip_shell_protocol::encode_sources(&[part2, part1]).unwrap();
+            let payload = hx6zip_shell_protocol::encode_sources(&[part2, part1]).unwrap();
             process.0.stdin.take().unwrap().write_all(&payload).unwrap();
         }
         let output = directory.join("资料.bin");
@@ -416,7 +417,7 @@ fn file_parts_cli_merges_reverse_selection_and_shell_pipe() {
 #[test]
 #[ignore = "opens the built GUI; requires an interactive Windows desktop"]
 fn quick_extraction_cli_extracts_to_both_destinations() {
-    use mzip::archive::{CreateOptions, create_archive};
+    use hx6zip::archive::{CreateOptions, create_archive};
 
     let temp = TempDir::new().unwrap();
     let source = temp.path().join("input").join("payload");
@@ -446,7 +447,7 @@ fn quick_extraction_cli_extracts_to_both_destinations() {
             parent.clone()
         };
         let mut process = TestProcess(
-            Command::new(env!("CARGO_BIN_EXE_mzip"))
+            Command::new(env!("CARGO_BIN_EXE_hx6zip"))
                 .arg(flag)
                 .arg(&archive)
                 .spawn()
@@ -489,7 +490,7 @@ fn quick_compression_closes_five_seconds_after_completion_but_not_error() {
     let source = temp.path().join("input.txt");
     fs::write(&source, b"compression auto-close").unwrap();
     let mut process = TestProcess(
-        Command::new(env!("CARGO_BIN_EXE_mzip"))
+        Command::new(env!("CARGO_BIN_EXE_hx6zip"))
             .arg("--create-zip")
             .arg(&source)
             .spawn()
@@ -525,7 +526,7 @@ fn quick_compression_closes_five_seconds_after_completion_but_not_error() {
 
     let missing = temp.path().join("missing.txt");
     let mut failed = TestProcess(
-        Command::new(env!("CARGO_BIN_EXE_mzip"))
+        Command::new(env!("CARGO_BIN_EXE_hx6zip"))
             .arg("--create-zip")
             .arg(missing)
             .spawn()
@@ -544,7 +545,7 @@ fn explorer_menu_combines_a_large_mixed_selection_into_one_archive() {
     unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok().unwrap() };
     let _apartment = Apartment;
     for format in [ArchiveFormat::Zip, ArchiveFormat::SevenZip] {
-        let temp = TempDir::with_prefix("MZip-Shell-Smoke-").unwrap();
+        let temp = TempDir::with_prefix("Hx6Zip-Shell-Smoke-").unwrap();
         let mut sources = Vec::new();
         for i in 0..20 {
             let path = temp.path().join(format!("文件 {i}.txt"));
@@ -556,9 +557,9 @@ fn explorer_menu_combines_a_large_mixed_selection_into_one_archive() {
         fs::create_dir(&folder).unwrap();
         fs::write(folder.join("child.txt"), b"nested").unwrap();
         sources.push(folder);
-        let expected = mzip::cli::automatic_archive_path(&sources, format).unwrap();
+        let expected = hx6zip::cli::automatic_archive_path(&sources, format).unwrap();
         let _window = ProgressWindow(format!(
-            "MZip - {}",
+            "Hx6Zip - {}",
             expected.file_name().unwrap().to_string_lossy()
         ));
         invoke(&sources, format);
@@ -583,9 +584,9 @@ fn explorer_menu_combines_a_large_mixed_selection_into_one_archive() {
             "more than one output archive was created"
         );
         let single = vec![expected];
-        let repacked = mzip::cli::automatic_archive_path(&single, format).unwrap();
+        let repacked = hx6zip::cli::automatic_archive_path(&single, format).unwrap();
         let _single_window = ProgressWindow(format!(
-            "MZip - {}",
+            "Hx6Zip - {}",
             repacked.file_name().unwrap().to_string_lossy()
         ));
         invoke(&single, format);

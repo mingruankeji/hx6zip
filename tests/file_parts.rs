@@ -4,8 +4,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use mzip::archive::{CancellationToken, Cancelled, JobControl, merge_files, split_file};
-use mzip_shell_protocol::{SPLIT_SIZES_MB, can_merge, can_split, merge_parts};
+use hx6zip::archive::{CancellationToken, Cancelled, JobControl, merge_files, split_file};
+use hx6zip_shell_protocol::{SPLIT_SIZES_MB, can_merge, can_split, merge_parts};
 use tempfile::TempDir;
 
 #[test]
@@ -208,7 +208,7 @@ fn presets_use_exact_requested_sizes_and_mb_units() {
 
 #[test]
 fn cli_parses_split_and_merge() {
-    use mzip::cli::{StartupAction, startup_action};
+    use hx6zip::cli::{StartupAction, startup_action};
     assert_eq!(
         startup_action(["--split-file", "file"].map(Into::into).into_iter()),
         Some(StartupAction::Split {

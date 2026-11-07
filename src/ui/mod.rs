@@ -27,7 +27,7 @@ use gpui_kit::{
     },
     *,
 };
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveFormat, ArchiveInfo, ArchiveTree, CancellationToken, Cancelled, CreateOptions,
     ExtractOptions, IntegrityMode, JobControl, Progress, SUPPORTED_EXTENSIONS, create_archive,
     create_archive_auto, create_archives_separately, inspect_archive, smart_destination,
@@ -64,11 +64,11 @@ enum ShellSetup {
 enum JobOutput {
     Updated(ArchiveInfo, ArchiveTree),
     Exported {
-        entries: Option<mzip::archive::ExportedEntries>,
+        entries: Option<hx6zip::archive::ExportedEntries>,
         open: bool,
     },
     Dragged {
-        entries: Option<mzip::archive::ExportedEntries>,
+        entries: Option<hx6zip::archive::ExportedEntries>,
         dropped: bool,
         destination: Option<PathBuf>,
     },
@@ -123,7 +123,7 @@ impl ProgressDispatch {
 
 pub struct AppView {
     explorer: explorer::Explorer,
-    exported_entries: Vec<mzip::archive::ExportedEntries>,
+    exported_entries: Vec<hx6zip::archive::ExportedEntries>,
     api_tool_launcher: fn() -> Result<()>,
     shell_setup: Option<ShellSetup>,
     shell_progress: bool,
@@ -146,7 +146,7 @@ pub struct AppView {
     format: ArchiveFormat,
     overwrite_create: bool,
     overwrite_dialog: overwrite::OverwriteDialog,
-    password_prompt: mzip::archive::PasswordPrompt,
+    password_prompt: hx6zip::archive::PasswordPrompt,
     password_request: Option<password::PasswordRequest>,
     smart_extract: bool,
     open_after_extract: bool,
@@ -190,7 +190,7 @@ impl AppView {
         let split_size = cx.new(|cx| {
             SelectState::new(
                 SearchableVec::new(
-                    mzip_shell_protocol::SPLIT_SIZES_MB
+                    hx6zip_shell_protocol::SPLIT_SIZES_MB
                         .iter()
                         .map(|(label, _)| *label)
                         .collect::<Vec<_>>(),
@@ -322,7 +322,7 @@ impl AppView {
             self.set_status("请选择分卷大小。", true, cx);
             return;
         };
-        let Some((_, mb)) = mzip_shell_protocol::SPLIT_SIZES_MB
+        let Some((_, mb)) = hx6zip_shell_protocol::SPLIT_SIZES_MB
             .iter()
             .find(|(value, _)| value == label)
         else {
@@ -335,7 +335,7 @@ impl AppView {
         self.shell_setup = None;
         self.shell_progress = true;
         self.start_job("正在准备分割…", JobKind::Split, cx, move |control| {
-            mzip::archive::split_file(&source, &destination, bytes, &control)?;
+            hx6zip::archive::split_file(&source, &destination, bytes, &control)?;
             Ok(JobOutput::FileProcessed(destination))
         });
     }
@@ -344,9 +344,9 @@ impl AppView {
         self.shell_progress = true;
         self.shell_custom = true;
         self.sources = sources.clone();
-        self.destination = mzip_shell_protocol::merge_parts(&sources).map(|(path, _)| path);
+        self.destination = hx6zip_shell_protocol::merge_parts(&sources).map(|(path, _)| path);
         self.start_job("正在准备合并…", JobKind::Merge, cx, move |control| {
-            mzip::archive::merge_files(&sources, &control).map(JobOutput::FileProcessed)
+            hx6zip::archive::merge_files(&sources, &control).map(JobOutput::FileProcessed)
         });
     }
 
@@ -391,7 +391,7 @@ impl AppView {
         self.shell_progress = true;
         self.page = Page::Create;
         self.format = format;
-        self.destination = match mzip::cli::automatic_archive_path(&sources, format) {
+        self.destination = match hx6zip::cli::automatic_archive_path(&sources, format) {
             Ok(path) => Some(path),
             Err(error) => {
                 self.set_status(format!("{error:#}"), true, cx);
@@ -431,7 +431,7 @@ impl AppView {
         self.shell_custom = true;
         self.page = Page::Create;
         self.format = ArchiveFormat::Zip;
-        self.destination = match mzip::cli::automatic_archive_path(&sources, self.format) {
+        self.destination = match hx6zip::cli::automatic_archive_path(&sources, self.format) {
             Ok(path) => Some(path),
             Err(error) => {
                 self.set_status(format!("{error:#}"), true, cx);
@@ -477,7 +477,7 @@ impl AppView {
         let destination = (|| {
             let base = path.parent().context("无法确定压缩包所在文件夹")?;
             if named_folder {
-                mzip::archive::named_destination(&path, base)
+                hx6zip::archive::named_destination(&path, base)
             } else {
                 Ok(base.to_path_buf())
             }
@@ -548,7 +548,7 @@ impl AppView {
             self.set_status("无法打开 Windows 默认应用设置。", true, cx);
         } else {
             self.set_status(
-                "请在 Windows 设置中选择 MZip 作为所需压缩格式的默认应用。",
+                "请在 Windows 设置中选择 Hx6Zip 作为所需压缩格式的默认应用。",
                 false,
                 cx,
             );
@@ -562,7 +562,7 @@ impl AppView {
             self.add_to_open_archive(paths.to_vec(), cx);
         } else if paths.len() == 1
             && paths[0].is_file()
-            && mzip_shell_protocol::can_attempt_extraction(&paths[0])
+            && hx6zip_shell_protocol::can_attempt_extraction(&paths[0])
         {
             self.open_path(paths[0].clone(), cx);
         } else if !paths.is_empty() {
@@ -650,6 +650,10 @@ impl AppView {
     fn create(&mut self, cx: &mut Context<Self>) {
         let password = Self::password(&self.create_password, cx);
         let confirmation = Self::password(&self.confirm_password, cx);
+        if self.format == ArchiveFormat::Tar && (password.is_some() || confirmation.is_some()) {
+            self.set_status("TAR 格式不支持加密，请清除密码后重试。", true, cx);
+            return;
+        }
         if password != confirmation {
             self.set_status("两次输入的密码不一致。", true, cx);
             return;
@@ -801,7 +805,7 @@ impl AppView {
         let (sender, receiver) = async_channel::bounded(1);
         let started_at = Instant::now();
         let spawn = thread::Builder::new()
-            .name("mzip-archive-worker".to_owned())
+            .name("hx6zip-archive-worker".to_owned())
             .spawn(move || {
                 let progress_sender = sender.clone();
                 let progress_state = Arc::new(Mutex::new(ProgressDispatch::default()));
@@ -1003,7 +1007,7 @@ impl AppView {
                             let path = entries.paths.first().cloned();
                             self.exported_entries.push(entries);
                             if open && let Some(path) = path {
-                                if mzip_shell_protocol::can_attempt_extraction(&path) {
+                                if hx6zip_shell_protocol::can_attempt_extraction(&path) {
                                     self.open_path(path, cx);
                                 } else if let Err(error) = explorer::open_default(&path) {
                                     self.set_status(
@@ -1329,7 +1333,7 @@ const ACKNOWLEDGED_LIBRARIES: &[(&str, &str)] = &[
 
 fn about_text() -> String {
     let mut text = format!(
-        "MZip {}\n本地桌面压缩文件管理器与 API 测试工具\n\n作者：{AUTHOR}\n\n感谢以下开源项目：\n",
+        "Hx6Zip {}\n本地桌面压缩文件管理器与 API 测试工具\n\n作者：{AUTHOR}\n\n感谢以下开源项目：\n",
         env!("CARGO_PKG_VERSION")
     );
     for (name, purpose) in ACKNOWLEDGED_LIBRARIES {
@@ -1343,7 +1347,7 @@ fn about_text() -> String {
 
 fn show_about() {
     rfd::MessageDialog::new()
-        .set_title("关于 MZip")
+        .set_title("关于 Hx6Zip")
         .set_description(about_text())
         .set_level(rfd::MessageLevel::Info)
         .show();
@@ -1368,7 +1372,7 @@ fn format_size(bytes: u64) -> String {
 mod tests {
     use std::time::{Duration, Instant};
 
-    use mzip::archive::Progress;
+    use hx6zip::archive::Progress;
 
     use super::{JobEvent, ProgressDispatch};
 
@@ -1517,7 +1521,7 @@ mod tests {
     ) {
         use super::{AppView, JobKind, JobOutput};
         use gpui_kit::{base::Root, *};
-        use mzip::archive::CancellationToken;
+        use hx6zip::archive::CancellationToken;
 
         cx.update(gpui_kit::init);
         let (root, cx) = cx.add_window_view(|window, cx| {
@@ -1631,7 +1635,7 @@ mod tests {
     fn closing_view_cancels_pending_archive_drag(cx: &mut gpui_kit::TestAppContext) {
         use super::{AppView, JobKind};
         use gpui_kit::{base::Root, *};
-        use mzip::archive::CancellationToken;
+        use hx6zip::archive::CancellationToken;
 
         cx.update(gpui_kit::init);
         let cancellation = CancellationToken::default();
@@ -1653,7 +1657,7 @@ mod tests {
     fn verification_progress_is_shown_separately(cx: &mut gpui_kit::TestAppContext) {
         use super::{AppView, JobKind, JobOutput, progress::CompressionTiming};
         use gpui_kit::{base::Root, *};
-        use mzip::archive::IntegrityMode;
+        use hx6zip::archive::IntegrityMode;
 
         cx.update(gpui_kit::init);
         let (root, cx) = cx.add_window_view(|window, cx| {
@@ -1748,7 +1752,7 @@ mod tests {
                 ])),
                 "已生成 2 个 ZIP",
             ),
-            (Err(mzip::archive::Cancelled.into()), "已完成的文件会保留"),
+            (Err(hx6zip::archive::Cancelled.into()), "已完成的文件会保留"),
         ] {
             view.update(cx, |app, cx| {
                 app.handle_job_event(
@@ -1774,7 +1778,7 @@ mod tests {
     fn settings_page_switches_and_persists_integrity_mode(cx: &mut gpui_kit::TestAppContext) {
         use super::{AppView, JobKind, Page, settings};
         use gpui_kit::{base::Root, *};
-        use mzip::archive::IntegrityMode;
+        use hx6zip::archive::IntegrityMode;
 
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("settings.json");
@@ -1810,7 +1814,7 @@ mod tests {
             app.job_integrity = app.integrity_mode;
             app.handle_job_event(
                 JobEvent::Finished {
-                    result: Err(mzip::archive::Cancelled.into()),
+                    result: Err(hx6zip::archive::Cancelled.into()),
                     warnings: Vec::new(),
                     last_progress: None,
                     finished_at: Instant::now(),
@@ -1841,7 +1845,7 @@ mod tests {
             root.view().clone().downcast::<AppView>().unwrap()
         });
         for (error, failed, message) in [
-            (mzip::archive::Cancelled.into(), false, "输出已回滚"),
+            (hx6zip::archive::Cancelled.into(), false, "输出已回滚"),
             (
                 super::overwrite::ConfirmationCancelled.into(),
                 false,
@@ -1856,7 +1860,7 @@ mod tests {
             view.update(cx, |app, cx| {
                 app.shell_progress = true;
                 app.job_kind = JobKind::Extract;
-                app.job_integrity = mzip::archive::IntegrityMode::Safe;
+                app.job_integrity = hx6zip::archive::IntegrityMode::Safe;
                 app.close_deadline = None;
                 app.handle_job_event(
                     JobEvent::Finished {

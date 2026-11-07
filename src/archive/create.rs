@@ -21,7 +21,8 @@ use walkdir::WalkDir;
 use zip::{AesMode, CompressionMethod, ZipArchive, ZipWriter, write::FullFileOptions};
 
 use super::{
-    ArchiveFormat, Cancelled, CreateOptions, IO_BUFFER_SIZE, IntegrityMode, JobControl,
+    ArchiveFormat, Cancelled, Compression, CreateOptions, IO_BUFFER_SIZE, IntegrityMode,
+    JobControl,
     common::{
         Tracker, TrackingReader, checked_metadata, collision_key, copy_stream,
         followed_source_metadata, is_link_or_reparse, persist_temp, safe_relative_path,
@@ -159,6 +160,14 @@ fn create_archive_impl(
     if options.sources.is_empty() && !allow_empty {
         bail!("请先选择要压缩的文件或文件夹");
     }
+    if options.format == ArchiveFormat::Tar
+        && options
+            .password
+            .as_deref()
+            .is_some_and(|password| !password.is_empty())
+    {
+        bail!("TAR 格式不支持加密");
+    }
     if ArchiveFormat::from_path(&options.destination)? != options.format {
         bail!("目标文件扩展名与压缩格式不一致");
     }
@@ -196,7 +205,7 @@ fn create_archive_impl(
     // sources are scanned, so writing them does not change a source folder that holds the
     // destination.
     let work = tempfile::Builder::new()
-        .prefix(".mzip-")
+        .prefix(".hx6zip-")
         .tempdir_in(&parent)
         .context("无法在目标文件夹中创建临时压缩包")?;
     let (mut sources, special_entries) =
@@ -237,6 +246,7 @@ fn create_archive_impl(
         ArchiveFormat::SevenZip => {
             write_sevenzip(&mut temporary, &sources, options, control, &mut tracker)?
         }
+        ArchiveFormat::Tar => write_tar(&mut temporary, &sources, control, &mut tracker)?,
     }
     tracker.finish()?;
     temporary
@@ -377,11 +387,77 @@ fn verify_created_archive(
             }
             result.context("7z 压缩包回读校验失败")?;
         }
+        ArchiveFormat::Tar => super::other::read_tar_entries(
+            &mut file,
+            Compression::None,
+            control,
+            |entry, input| verify(&entry.name, entry.is_directory, entry.size, input),
+        )?,
     }
     if seen.len() != sources.len() {
         bail!("压缩包缺少源文件条目，未生成压缩包");
     }
     tracker.finish()
+}
+
+fn write_tar(
+    temporary: &mut NamedTempFile,
+    sources: &[Source],
+    control: &JobControl,
+    tracker: &mut Tracker<'_>,
+) -> Result<()> {
+    let tracker = Mutex::new(tracker);
+    let output = BufWriter::with_capacity(IO_BUFFER_SIZE, temporary.as_file_mut());
+    let mut archive = tar::Builder::new(ArchiveSizeWriter::new(output, &tracker));
+    for source in sources {
+        start_source(source, &tracker)?;
+        let modified = source
+            .metadata
+            .modified()
+            .ok()
+            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or(0, |time| time.as_secs());
+        let mut header = tar::Header::new_gnu();
+        header.set_entry_type(if source.is_directory {
+            tar::EntryType::Directory
+        } else {
+            tar::EntryType::Regular
+        });
+        header.set_size(source.size);
+        header.set_mode(if source.is_directory { 0o755 } else { 0o644 });
+        header.set_mtime(modified);
+        if source.is_directory {
+            archive
+                .append_data(&mut header, &source.name, io::empty())
+                .with_context(|| format!("无法添加 TAR 文件夹 {}", source.name))?;
+        } else {
+            let file = File::open(&source.path)
+                .with_context(|| format!("无法打开源文件 {}", source.path.display()))?;
+            let tracker = &tracker;
+            let mut input = super::common::TrackingReader {
+                file: BufReader::with_capacity(IO_BUFFER_SIZE, file),
+                expected: source.size,
+                read: 0,
+                control,
+                advance: |bytes| advance_tracker(tracker, bytes),
+            };
+            archive
+                .append_data(&mut header, &source.name, &mut input)
+                .with_context(|| format!("无法添加 TAR 文件 {}", source.name))?;
+            if input.read != source.size {
+                bail!("文件大小与预期不符：{}", source.name);
+            }
+        }
+        validate_source(source)?;
+    }
+    control.check_cancelled()?;
+    archive.finish().context("无法完成 TAR 压缩包")?;
+    archive
+        .into_inner()
+        .context("无法写入 TAR 压缩包")?
+        .flush()
+        .context("无法刷新 TAR 压缩包")?;
+    Ok(())
 }
 
 struct CompareSource(BufReader<File>);
@@ -572,7 +648,7 @@ fn source_metadata(
     std::thread::scope(|scope| -> Result<()> {
         for _ in 0..workers {
             std::thread::Builder::new()
-                .name("mzip-scan".to_owned())
+                .name("hx6zip-scan".to_owned())
                 .spawn_scoped(scope, || {
                     use std::sync::atomic::Ordering;
                     while !failed.load(Ordering::Relaxed) {
@@ -1026,7 +1102,7 @@ fn write_zip_parallel<W: Write + Seek>(
             let pipeline = &pipeline;
             let blocked = &blocked;
             std::thread::Builder::new()
-                .name("mzip-ZIP-worker".to_owned())
+                .name("hx6zip-ZIP-worker".to_owned())
                 .spawn_scoped(scope, move || {
                     pipeline_worker(pipeline, shared.tasks.len(), blocked, |index| {
                         Some(run_zip_task(&shared.tasks[index], shared))
@@ -1907,7 +1983,7 @@ fn write_sevenzip_parallel<W: Write + Seek>(
             let pipeline = &pipeline;
             let blocked = &blocked;
             std::thread::Builder::new()
-                .name("mzip-7z-worker".to_owned())
+                .name("hx6zip-7z-worker".to_owned())
                 .spawn_scoped(scope, move || {
                     pipeline_worker(pipeline, tasks.len(), blocked, |index| {
                         match &tasks[index] {
@@ -2171,6 +2247,45 @@ impl Read for SevenZipSource<'_, '_, '_, '_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tar_creation_round_trips_files_and_directories() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let input = temp.path().join("input");
+        fs::create_dir_all(input.join("empty")).unwrap();
+        fs::write(input.join("资料.txt"), b"tar contents").unwrap();
+        let long_name = "l".repeat(120);
+        fs::write(input.join(&long_name), b"long path").unwrap();
+        let destination = temp.path().join("sample.tar");
+
+        create_archive(
+            &CreateOptions {
+                sources: vec![input.clone()],
+                destination: destination.clone(),
+                format: ArchiveFormat::Tar,
+                password: None,
+                overwrite: false,
+            },
+            &JobControl::default().with_integrity(IntegrityMode::Safe),
+        )
+        .unwrap();
+
+        let info =
+            super::super::inspect_archive(&destination, None, &JobControl::default()).unwrap();
+        assert!(info.entries.iter().any(|entry| {
+            entry.name == "input/资料.txt" && entry.size == b"tar contents".len() as u64
+        }));
+        assert!(
+            info.entries
+                .iter()
+                .any(|entry| entry.name == "input/empty" && entry.is_directory)
+        );
+        assert!(
+            info.entries
+                .iter()
+                .any(|entry| entry.name == format!("input/{long_name}"))
+        );
+    }
 
     #[test]
     fn archive_size_tracks_written_extent_across_seeks() {

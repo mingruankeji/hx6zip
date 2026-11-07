@@ -28,7 +28,7 @@ use windows::{
 };
 
 /// Must match the System.AppUserModel.ID of the Start menu shortcut in installer\Package.wxs.
-pub const APP_USER_MODEL_ID: &str = "MZip.Desktop";
+pub const APP_USER_MODEL_ID: &str = "Hx6Zip.Desktop";
 
 pub fn set_window_icon(window: &Window) -> Result<()> {
     let handle =
@@ -68,7 +68,7 @@ pub fn set_window_icon(window: &Window) -> Result<()> {
 // taskbar would look up package logos. A fixed window AUMID makes every launch path use
 // the same group and the executable's icon.
 fn set_taskbar_identity(hwnd: HWND) -> Result<()> {
-    let executable = std::env::current_exe().context("cannot locate MZip executable")?;
+    let executable = std::env::current_exe().context("cannot locate Hx6Zip executable")?;
     let executable = executable.display();
     let store: IPropertyStore =
         unsafe { SHGetPropertyStoreForWindow(hwnd) }.context("cannot open window properties")?;
@@ -80,7 +80,7 @@ fn set_taskbar_identity(hwnd: HWND) -> Result<()> {
         ),
         (
             PKEY_AppUserModel_RelaunchDisplayNameResource,
-            "MZip".to_owned(),
+            "Hx6Zip".to_owned(),
         ),
         (
             PKEY_AppUserModel_RelaunchIconResource,

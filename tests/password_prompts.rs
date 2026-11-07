@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveEdit, ArchiveFormat, Cancelled, CreateOptions, ExtractOptions, IntegrityMode,
     JobControl, PasswordPrompt, ZipDragSource, create_archive, edit_archive, export_entries,
     extract_archive, extract_drag_entries, inspect_archive,
@@ -301,10 +301,10 @@ fn selecting_plain_zip_content_does_not_prompt_for_unselected_encrypted_entries(
 }
 
 #[test]
-#[ignore = "reads encrypted user samples from MZIP_PASSWORD_PROBE_DIR without extracting their contents"]
+#[ignore = "reads encrypted user samples from HX6ZIP_PASSWORD_PROBE_DIR without extracting their contents"]
 fn supplied_archives_request_password_before_writing() {
     let root =
-        PathBuf::from(std::env::var_os("MZIP_PASSWORD_PROBE_DIR").expect("set sample directory"));
+        PathBuf::from(std::env::var_os("HX6ZIP_PASSWORD_PROBE_DIR").expect("set sample directory"));
     for extension in ["rar", "zip", "7z"] {
         let path = root.join(format!("{extension}密码.{extension}"));
         let temp = tempfile::tempdir().unwrap();

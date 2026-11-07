@@ -154,6 +154,7 @@ pub fn editable_format(info: &ArchiveInfo) -> Result<ArchiveFormat> {
             header.starts_with(b"PK\x03\x04") || header.starts_with(b"PK\x05\x06")
         }
         ArchiveFormat::SevenZip => header == *b"7z\xbc\xaf\x27\x1c",
+        ArchiveFormat::Tar => false,
     };
     if !ordinary {
         bail!("自解压文件只支持浏览和解压，不能修改");
@@ -533,7 +534,7 @@ fn edit_archive_with_password(
         None
     };
     let work = tempfile::Builder::new()
-        .prefix(".mzip-edit-")
+        .prefix(".hx6zip-edit-")
         .tempdir_in(parent)?;
     let data = work.path().join("data");
     fs::create_dir(&data)?;
@@ -698,7 +699,7 @@ pub fn export_entries(
     control: &JobControl,
 ) -> Result<ExportedEntries> {
     let selected = archive_selection(info, paths)?;
-    let directory = tempfile::Builder::new().prefix("mzip-export-").tempdir()?;
+    let directory = tempfile::Builder::new().prefix("hx6zip-export-").tempdir()?;
     extract_archive(
         info,
         &ExtractOptions {

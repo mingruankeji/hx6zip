@@ -377,7 +377,7 @@ impl RequestStore {
 
 fn data_directory() -> Result<PathBuf, String> {
     let base = BaseDirs::new().ok_or_else(|| "无法确定应用数据目录。".to_owned())?;
-    Ok(base.data_local_dir().join("MZip").join("api-client"))
+    Ok(base.data_local_dir().join("Hx6Zip").join("api-client"))
 }
 
 fn legacy_data_directory(organization: &str, application: &str) -> Result<PathBuf, String> {
@@ -504,7 +504,7 @@ mod tests {
 
         assert_eq!(
             data_directory().unwrap(),
-            base.join("MZip").join("api-client")
+            base.join("Hx6Zip").join("api-client")
         );
         assert_eq!(
             legacy_data_directory("dmgpost", "dmgpost").unwrap(),
@@ -519,7 +519,7 @@ mod tests {
     #[test]
     fn migrates_dmgpost_requests_and_environments_once_without_deleting_source() {
         let temp = tempfile::tempdir().unwrap();
-        let current = temp.path().join("mzip");
+        let current = temp.path().join("hx6zip");
         let old = temp.path().join("dmgpost");
         let older = temp.path().join("hbruno");
         let (request, environments) = create_legacy_store(&old, "旧请求");
@@ -537,7 +537,7 @@ mod tests {
         );
         assert!(old.join("environments.json").is_file());
 
-        let updated = SavedRequest::new("MZip 新请求");
+        let updated = SavedRequest::new("Hx6Zip 新请求");
         store.save(&[updated.clone()], &[]).unwrap();
         fs::remove_file(store.environments_path()).unwrap();
         let (reopened, requests, _) = RequestStore::open_in(&current, &[old]).unwrap();
@@ -551,7 +551,7 @@ mod tests {
     #[test]
     fn migrates_hbruno_when_dmgpost_data_is_missing() {
         let temp = tempfile::tempdir().unwrap();
-        let current = temp.path().join("mzip");
+        let current = temp.path().join("hx6zip");
         let old = temp.path().join("dmgpost");
         let older = temp.path().join("hbruno");
         let (request, environments) = create_legacy_store(&older, "HBruno 请求");
@@ -565,7 +565,7 @@ mod tests {
     #[test]
     fn migration_does_not_mix_requests_with_an_older_environment() {
         let temp = tempfile::tempdir().unwrap();
-        let current = temp.path().join("mzip");
+        let current = temp.path().join("hx6zip");
         let old = temp.path().join("dmgpost");
         let older = temp.path().join("hbruno");
         let (request, _) = create_legacy_store(&old, "旧请求");
@@ -585,7 +585,7 @@ mod tests {
     #[test]
     fn migration_keeps_legacy_environment_even_without_saved_requests() {
         let temp = tempfile::tempdir().unwrap();
-        let current = temp.path().join("mzip");
+        let current = temp.path().join("hx6zip");
         let old = temp.path().join("dmgpost");
         let (_, environments) = create_legacy_store(&old, "旧请求");
         fs::remove_file(old.join("requests.json")).unwrap();
@@ -600,7 +600,7 @@ mod tests {
     #[test]
     fn migration_preserves_existing_environment_and_retries_after_error() {
         let temp = tempfile::tempdir().unwrap();
-        let current = temp.path().join("mzip");
+        let current = temp.path().join("hx6zip");
         let old = temp.path().join("dmgpost");
         fs::create_dir_all(&current).unwrap();
         fs::create_dir_all(&old).unwrap();
@@ -633,7 +633,7 @@ mod tests {
     #[test]
     fn malformed_legacy_requests_are_reported_instead_of_replaced() {
         let temp = tempfile::tempdir().unwrap();
-        let current = temp.path().join("mzip");
+        let current = temp.path().join("hx6zip");
         let old = temp.path().join("dmgpost");
         fs::create_dir(&old).unwrap();
         fs::write(old.join("requests.json"), b"invalid json").unwrap();
@@ -654,7 +654,7 @@ mod tests {
     #[test]
     fn request_store_lock_excludes_other_instances_until_released() {
         let temp = tempfile::tempdir().unwrap();
-        let directory = temp.path().join("mzip");
+        let directory = temp.path().join("hx6zip");
 
         let first = RequestStoreLock::acquire_in(&directory).unwrap();
         assert!(matches!(
@@ -667,8 +667,8 @@ mod tests {
 
     #[test]
     fn request_store_lock_excludes_other_processes() {
-        const DIRECTORY: &str = "MZIP_TEST_API_LOCK_DIRECTORY";
-        const EXPECT_LOCKED: &str = "MZIP_TEST_API_LOCK_EXPECT_LOCKED";
+        const DIRECTORY: &str = "HX6ZIP_TEST_API_LOCK_DIRECTORY";
+        const EXPECT_LOCKED: &str = "HX6ZIP_TEST_API_LOCK_EXPECT_LOCKED";
         if let Some(directory) = std::env::var_os(DIRECTORY) {
             let result = RequestStoreLock::acquire_in(Path::new(&directory));
             if std::env::var(EXPECT_LOCKED).unwrap() == "1" {
@@ -680,7 +680,7 @@ mod tests {
         }
 
         let temp = tempfile::tempdir().unwrap();
-        let directory = temp.path().join("mzip");
+        let directory = temp.path().join("hx6zip");
         let first = RequestStoreLock::acquire_in(&directory).unwrap();
         let run_child = |expect_locked: bool| {
             let output = std::process::Command::new(std::env::current_exe().unwrap())

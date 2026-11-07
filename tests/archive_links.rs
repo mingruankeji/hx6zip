@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveEdit, ArchiveFormat, CancellationToken, Cancelled, CreateOptions, ExtractOptions,
     IntegrityMode, JobControl, create_archive, create_archives_separately, edit_archive,
     extract_archive, extract_conflicts, import_conflicts, inspect_archive,
@@ -189,7 +189,7 @@ fn cyclic_links_do_not_replace_archives() {
                     .unwrap()
                     .file_name()
                     .to_string_lossy()
-                    .starts_with(".mzip-")
+                    .starts_with(".hx6zip-")
             }));
         }
     }
@@ -229,7 +229,7 @@ fn dangling_directory_links_use_manifest_without_warnings_and_keep_readable_cont
                 assert!(
                     info.entries
                         .iter()
-                        .any(|e| e.name == "Special_Cases_List.mmzip")
+                        .any(|e| e.name == "Special_Cases_List.mhx6zip")
                 );
                 if root == &source {
                     let output = temp.path().join("out");
@@ -329,7 +329,7 @@ fn missing_sources_warn_including_separate_archive_batches() {
             create_archive(&options(&missing, &archive, format), &control).unwrap();
             let info = inspect_archive(&archive, None, &control).unwrap();
             assert_eq!(info.entries.len(), 1);
-            assert_eq!(info.entries[0].name, "Special_Cases_List.mmzip");
+            assert_eq!(info.entries[0].name, "Special_Cases_List.mhx6zip");
             assert_eq!(control.warnings().len(), 1);
             assert!(control.warnings()[0].contains("missing.txt"));
         }
@@ -418,18 +418,18 @@ fn dangling_junction_manifests_are_readable_by_official_7zip() {
             .unwrap();
         assert_eq!(output.status.code(), Some(1), "{output:?}");
         for mode in [IntegrityMode::Normal, IntegrityMode::Safe] {
-            let archive = temp.path().join(format!("mzip.{}", format.extension()));
+            let archive = temp.path().join(format!("hx6zip.{}", format.extension()));
             let control = JobControl::default().with_integrity(mode);
             create_archive(&options(&source, &archive, format), &control).unwrap();
             assert!(control.warnings().is_empty(), "{:?}", control.warnings());
             let ours = entries(&archive);
             assert!(
                 ours.iter()
-                    .any(|(name, _, _)| name == "Special_Cases_List.mmzip")
+                    .any(|(name, _, _)| name == "Special_Cases_List.mhx6zip")
             );
             let ordinary = ours
                 .into_iter()
-                .filter(|(name, _, _)| name != "Special_Cases_List.mmzip")
+                .filter(|(name, _, _)| name != "Special_Cases_List.mhx6zip")
                 .collect::<Vec<_>>();
             let official_entries = entries(&official)
                 .into_iter()
@@ -503,7 +503,7 @@ fn safe_extraction_rolls_back_real_link_targets_including_on_other_volumes() {
     for format in [ArchiveFormat::Zip, ArchiveFormat::SevenZip] {
         let temp = TempDir::new().unwrap();
         let target_temp = tempfile::Builder::new()
-            .prefix(".mzip-link-test-")
+            .prefix(".hx6zip-link-test-")
             .tempdir_in(std::env::current_dir().unwrap())
             .unwrap();
         let source = temp.path().join("source");
@@ -591,7 +591,7 @@ fn linked_source_excludes_destination_and_work_directory() {
                 .any(|entry| entry.name == "source/linked/file.txt")
         );
         assert!(info.entries.iter().all(
-            |entry| !entry.name.contains(".mzip-") && !entry.name.ends_with(format.extension())
+            |entry| !entry.name.contains(".hx6zip-") && !entry.name.ends_with(format.extension())
         ));
     }
 }

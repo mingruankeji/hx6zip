@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use mzip_shell_protocol::read_sources;
+use hx6zip_shell_protocol::read_sources;
 use tempfile::TempDir;
 use windows::{
     Win32::{
@@ -43,7 +43,7 @@ fn installer_registers_single_archive_quick_extraction_commands() {
         ),
         ("07.ExtractTo", "--extract-to", "解压到"),
     ] {
-        let key = format!(r#"Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\{key}">"#);
+        let key = format!(r#"Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\{key}">"#);
         let section = installer
             .split_once(&key)
             .unwrap()
@@ -54,8 +54,8 @@ fn installer_registers_single_archive_quick_extraction_commands() {
         assert!(section.contains(&format!(r#"Value="{title}""#)));
         assert!(section.contains(r#"Name="MultiSelectModel" Value="Single""#));
         assert!(section.contains(&format!("{flag} &quot;%1&quot;")));
-        assert!(section.contains(r#"Name="AppliesTo" Value="$(var.MZipArchiveFilter)""#));
-        for extension in mzip_shell_protocol::EXTRACT_EXCLUDED_EXTENSIONS {
+        assert!(section.contains(r#"Name="AppliesTo" Value="$(var.Hx6ZipArchiveFilter)""#));
+        for extension in hx6zip_shell_protocol::EXTRACT_EXCLUDED_EXTENSIONS {
             assert!(
                 installer.contains(&format!("System.FileExtension:=\".{extension}\"")),
                 "{extension} missing"
@@ -69,9 +69,9 @@ fn package_manifest_registers_the_same_shell_class() {
     let manifest = include_str!(r"..\..\installer\AppxManifest.xml");
     let class = "15C13C8A-46D2-45E3-9D26-82518FE73D50";
     assert_eq!(manifest.matches(class).count(), 3);
-    assert_eq!(manifest.matches("<desktop5:Verb Id=\"MZip\"").count(), 2);
+    assert_eq!(manifest.matches("<desktop5:Verb Id=\"Hx6Zip\"").count(), 2);
     for required in [
-        "MZipShell.dll",
+        "Hx6ZipShell.dll",
         "windows.comServer",
         "windows.fileExplorerContextMenus",
         "Type=\"*\"",
@@ -152,7 +152,7 @@ fn main() {
         .arg("--edition=2024")
         .arg(&source)
         .arg("-o")
-        .arg(directory.join("mzip.exe"))
+        .arg(directory.join("hx6zip.exe"))
         .output()
         .unwrap();
     assert!(
@@ -178,9 +178,9 @@ fn actual_dll_activates_filters_and_invokes_real_shell_selections() {
     let _apartment = Apartment;
     let built_dll = std::env::current_exe()
         .unwrap()
-        .with_file_name("mzip_shell_extension.dll");
+        .with_file_name("hx6zip_shell_extension.dll");
     let directory = TempDir::new().unwrap();
-    let dll = directory.path().join("MZipShell.dll");
+    let dll = directory.path().join("Hx6ZipShell.dll");
     fs::copy(built_dll, &dll).unwrap();
     build_test_executable(directory.path());
     let module = Module(unsafe { LoadLibraryW(&HSTRING::from(dll.as_os_str())).unwrap() });
@@ -205,7 +205,7 @@ fn actual_dll_activates_filters_and_invokes_real_shell_selections() {
         let icon = root.GetIcon(None).unwrap();
         let icon_path = PCWSTR(icon.0).to_string().unwrap();
         CoTaskMemFree(Some(icon.0.cast()));
-        assert!(icon_path.ends_with(r"\mzip.exe,0"), "{icon_path}");
+        assert!(icon_path.ends_with(r"\hx6zip.exe,0"), "{icon_path}");
 
         let children = root.EnumSubCommands().unwrap();
         let mut commands = [None, None, None, None, None, None, None, None, None, None];
@@ -451,10 +451,10 @@ fn installer_registers_dynamic_selection_handlers() {
             "F4774D42-41E4-4AC8-B964-9A37688AE102",
         ),
     ] {
-        let key = format!(r#"Key="Software\Classes\AllFilesystemObjects\shell\MZip\shell\{key}">"#);
+        let key = format!(r#"Key="Software\Classes\AllFilesystemObjects\shell\Hx6Zip\shell\{key}">"#);
         let (before, after) = installer.split_once(&key).unwrap();
         let component = before
-            .rsplit_once(r#"<Component Id="MZipShellIntegration""#)
+            .rsplit_once(r#"<Component Id="Hx6ZipShellIntegration""#)
             .unwrap()
             .1;
         // This key's own opening tag is the only unclosed one, so it sits at component level.

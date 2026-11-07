@@ -92,10 +92,10 @@ fn write_archive(path: &Path) {
 }
 
 #[test]
-#[ignore = "opens short-lived MZip windows; requires an interactive Windows desktop"]
+#[ignore = "opens short-lived Hx6Zip windows; requires an interactive Windows desktop"]
 fn quick_extract_confirmation_has_exact_buttons_and_preserves_or_replaces_files() {
-    let executable = std::env::var_os("MZIP_TEST_EXTRACT_EXECUTABLE")
-        .unwrap_or_else(|| env!("CARGO_BIN_EXE_mzip").into());
+    let executable = std::env::var_os("HX6ZIP_TEST_EXTRACT_EXECUTABLE")
+        .unwrap_or_else(|| env!("CARGO_BIN_EXE_hx6zip").into());
     for (flag, named_folder, choice) in [
         ("--extract-here", false, Some("取消")),
         ("--extract-here", false, Some("全部替换")),
@@ -131,7 +131,7 @@ fn quick_extract_confirmation_has_exact_buttons_and_preserves_or_replaces_files(
         let dialog = loop {
             assert!(
                 process.0.try_wait().unwrap().is_none(),
-                "MZip exited before showing the confirmation"
+                "Hx6Zip exited before showing the confirmation"
             );
             let mut search = DialogSearch {
                 process_id: process.0.id(),
@@ -192,12 +192,12 @@ fn quick_extract_confirmation_has_exact_buttons_and_preserves_or_replaces_files(
         let deadline = Instant::now() + Duration::from_secs(30);
         loop {
             if let Some(status) = process.0.try_wait().unwrap() {
-                assert!(status.success(), "MZip exited unsuccessfully: {status}");
+                assert!(status.success(), "Hx6Zip exited unsuccessfully: {status}");
                 break;
             }
             assert!(
                 Instant::now() < deadline,
-                "MZip did not finish {flag} {choice:?}"
+                "Hx6Zip did not finish {flag} {choice:?}"
             );
             thread::sleep(Duration::from_millis(50));
         }

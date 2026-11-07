@@ -1,0 +1,26 @@
+1 ICON "hx6zip.ico"
+
+1 VERSIONINFO
+FILEVERSION HX6ZIP_VERSION_MAJOR,HX6ZIP_VERSION_MINOR,HX6ZIP_VERSION_PATCH,0
+PRODUCTVERSION HX6ZIP_VERSION_MAJOR,HX6ZIP_VERSION_MINOR,HX6ZIP_VERSION_PATCH,0
+FILEOS 0x40004
+FILETYPE 1
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "Hx6Zip\0"
+            VALUE "FileDescription", "Hx6Zip archive manager\0"
+            VALUE "FileVersion", HX6ZIP_VERSION_STRING "\0"
+            VALUE "InternalName", "hx6zip\0"
+            VALUE "OriginalFilename", "hx6zip.exe\0"
+            VALUE "ProductName", "Hx6Zip\0"
+            VALUE "ProductVersion", HX6ZIP_VERSION_STRING "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

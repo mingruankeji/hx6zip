@@ -1,4 +1,4 @@
-﻿param(
+param(
     [switch]$Unregister,
     [switch]$TrustCertificate,
     [int]$UILevel = 0
@@ -7,7 +7,7 @@
 $ErrorActionPreference = 'Stop'
 $packageName = 'MZip.Desktop.Dev'
 $publisher = 'CN=MZip Development'
-$logPath = Join-Path ([System.IO.Path]::GetTempPath()) 'MZip-Windows11Menu.log'
+$logPath = Join-Path ([System.IO.Path]::GetTempPath()) 'Hx6Zip-Windows11Menu.log'
 
 function Write-MenuLog([string]$Message) {
     Write-Output $Message
@@ -16,7 +16,7 @@ function Write-MenuLog([string]$Message) {
     }
 }
 
-function Get-MZipPackages {
+function Get-Hx6ZipPackages {
     @(Get-AppxPackage -Name $packageName -ErrorAction Stop | Where-Object { $_.Publisher -eq $publisher })
 }
 
@@ -51,10 +51,10 @@ function Confirm-CertificateTrust([string]$CertificatePath) {
         return
     }
 
-    # Record ownership so uninstall only removes trust that MZip itself added.
+    # Record ownership so uninstall only removes trust that Hx6Zip itself added.
     $import = "Import-Certificate -FilePath '$($CertificatePath.Replace("'", "''"))' -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople' | Out-Null; " +
-        "New-Item -Path 'HKLM:\SOFTWARE\MZip\CertificateTrust' -Force | Out-Null; " +
-        "Set-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\MZip\CertificateTrust' -Name Thumbprint -Value '$($certificate.Thumbprint)'"
+        "New-Item -Path 'HKLM:\SOFTWARE\Hx6Zip\CertificateTrust' -Force | Out-Null; " +
+        "Set-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Hx6Zip\CertificateTrust' -Name Thumbprint -Value '$($certificate.Thumbprint)'"
     if (Test-Administrator) {
         Invoke-Expression $import
     } else {
@@ -81,17 +81,17 @@ function Register-MenuPackage {
         Write-MenuLog 'Windows 10 detected; the traditional context menu is used.'
         return
     }
-    $packagePath = Join-Path $PSScriptRoot 'MZip-Menu.msix'
+    $packagePath = Join-Path $PSScriptRoot 'Hx6Zip-Menu.msix'
     if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) {
-        throw "Signed MZip menu package not found: $packagePath. Run the copy of this script in the MZip installation folder (default: $env:LOCALAPPDATA\Programs\MZip), not the source template; if it is missing there, rebuild the installer with a code-signing certificate."
+        throw "Signed Hx6Zip menu package not found: $packagePath. Run the copy of this script in the Hx6Zip installation folder (default: $env:LOCALAPPDATA\Programs\Hx6Zip), not the source template; if it is missing there, rebuild the installer with a code-signing certificate."
     }
     if ($TrustCertificate) {
-        Confirm-CertificateTrust (Join-Path $PSScriptRoot 'MZip-Development.cer')
+        Confirm-CertificateTrust (Join-Path $PSScriptRoot 'Hx6Zip-Development.cer')
     }
 
     # A rebuilt package may reuse its version, which Windows rejects as a conflicting update.
     $version = Get-PackageVersion $packagePath
-    foreach ($package in Get-MZipPackages) {
+    foreach ($package in Get-Hx6ZipPackages) {
         if ($package.Version -eq $version) {
             Remove-AppxPackage -Package $package.PackageFullName -ErrorAction Stop
         }
@@ -99,29 +99,29 @@ function Register-MenuPackage {
     try {
         Add-AppxPackage -Path $packagePath -ExternalLocation $PSScriptRoot -ErrorAction Stop
     } catch {
-        throw "Unable to register the signed MZip menu package. Check that you trust its signing certificate, then retry. Windows reported: $($_.Exception.Message)"
+        throw "Unable to register the signed Hx6Zip menu package. Check that you trust its signing certificate, then retry. Windows reported: $($_.Exception.Message)"
     }
-    Write-MenuLog 'MZip Windows 11 context menu registered for the current user.'
+    Write-MenuLog 'Hx6Zip Windows 11 context menu registered for the current user.'
     Write-MenuLog 'Restart File Explorer, or sign out and back in, if the menu does not appear.'
 }
 
 # The repository copy is only a template; the menu package exists solely in the installation folder.
-if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'MZip-Menu.msix') -PathType Leaf) -and -not $Unregister) {
-    $installDir = (Get-ItemProperty -LiteralPath 'HKCU:\Software\MZip' -ErrorAction SilentlyContinue).InstallDir
-    if (-not $installDir) { $installDir = Join-Path $env:LOCALAPPDATA 'Programs\MZip' }
+if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'Hx6Zip-Menu.msix') -PathType Leaf) -and -not $Unregister) {
+    $installDir = (Get-ItemProperty -LiteralPath 'HKCU:\Software\Hx6Zip' -ErrorAction SilentlyContinue).InstallDir
+    if (-not $installDir) { $installDir = Join-Path $env:LOCALAPPDATA 'Programs\Hx6Zip' }
     $installedScript = Join-Path $installDir 'Windows11Menu.ps1'
-    $installedPackage = Join-Path $installDir 'MZip-Menu.msix'
+    $installedPackage = Join-Path $installDir 'Hx6Zip-Menu.msix'
     if ((Test-Path -LiteralPath $installedPackage -PathType Leaf) -and
         [IO.Path]::GetFullPath($installDir).TrimEnd('\') -ne [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')) {
         Write-Output "Running the installed copy: $installedScript"
         & $installedScript -TrustCertificate:$TrustCertificate -UILevel $UILevel
         return
     }
-    throw "MZip is not installed with the Windows 11 menu (no $installedPackage). Install dist\MZip-Setup-*.msi built with -CertificateThumbprint; it trusts the certificate and registers the menu automatically."
+    throw "Hx6Zip is not installed with the Windows 11 menu (no $installedPackage). Install dist\Hx6Zip-Setup-*.msi built with -CertificateThumbprint; it trusts the certificate and registers the menu automatically."
 }
 
 if ($Unregister) {
-    foreach ($package in Get-MZipPackages) {
+    foreach ($package in Get-Hx6ZipPackages) {
         Remove-AppxPackage -Package $package.PackageFullName -ErrorAction Stop
         Write-Output "Removed $($package.PackageFullName)"
     }
@@ -141,8 +141,8 @@ try {
     if ($UILevel -ge 4) {
         Add-Type -AssemblyName System.Windows.Forms
         [void][System.Windows.Forms.MessageBox]::Show(
-            "MZip 已安装，但未能启用 Windows 11 新版右键菜单，传统菜单（「显示更多选项」）仍可使用。`n`n原因：$($_.Exception.Message)`n`n可稍后重新运行安装程序选择「修复」重试。日志：$logPath",
-            'MZip 安装', 'OK', 'Warning')
+            "Hx6Zip 已安装，但未能启用 Windows 11 新版右键菜单，传统菜单（「显示更多选项」）仍可使用。`n`n原因：$($_.Exception.Message)`n`n可稍后重新运行安装程序选择「修复」重试。日志：$logPath",
+            'Hx6Zip 安装', 'OK', 'Warning')
     }
     exit 1
 }

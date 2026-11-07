@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use mzip::archive::ZipDragReader;
+use hx6zip::archive::ZipDragReader;
 use windows::{
     Win32::{
         Foundation::{

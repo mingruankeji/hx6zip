@@ -3,7 +3,7 @@ param()
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $assets = Join-Path (Split-Path -Parent $PSScriptRoot) 'assets'
-$source = [System.Drawing.Image]::FromFile((Join-Path $assets 'mzip.png'))
+$source = [System.Drawing.Image]::FromFile((Join-Path $assets 'hx6zip.png'))
 
 function Get-IconPng([int]$Size) {
     $bitmap = New-Object System.Drawing.Bitmap($Size, $Size)
@@ -32,7 +32,7 @@ function Get-IconPng([int]$Size) {
 try {
     $sizes = @(16, 20, 24, 32, 40, 48, 64, 96, 128, 256)
     $frames = @($sizes | ForEach-Object { Get-IconPng $_ })
-    $stream = [System.IO.File]::Create((Join-Path $assets 'mzip.ico'))
+    $stream = [System.IO.File]::Create((Join-Path $assets 'hx6zip.ico'))
     $writer = New-Object System.IO.BinaryWriter($stream)
     try {
         $writer.Write([uint16]0)
@@ -70,4 +70,4 @@ try {
     $source.Dispose()
 }
 
-Write-Output "Updated MZip ICO and package logos in $assets"
+Write-Output "Updated Hx6Zip ICO and package logos in $assets"

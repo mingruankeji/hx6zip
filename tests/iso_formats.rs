@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveKind, CancellationToken, Cancelled, ExtractOptions, IntegrityMode, JobControl,
     archive_selection, drag_conflicts, export_entries, extract_archive, extract_conflicts,
     extract_drag_entries, inspect_archive,
@@ -78,7 +78,7 @@ fn descriptor(image: &mut [u8], sector: usize, kind: u8, root: u32, table: u32) 
     descriptor[0] = kind;
     descriptor[1..7].copy_from_slice(b"CD001\x01");
     descriptor[8..72].fill(b' ');
-    descriptor[40..49].copy_from_slice(b"MZIP_TEST");
+    descriptor[40..49].copy_from_slice(b"HX6ZIP_TEST");
     both_u32(descriptor, 80, 40);
     if kind == 2 {
         descriptor[88..91].copy_from_slice(b"%/E");
@@ -502,9 +502,9 @@ fn iso_cancellation_preserves_existing_files_and_cleans_temporary_files() {
 }
 
 #[test]
-#[ignore = "requires an external ISO specified by MZIP_TEST_EXTERNAL_ISO"]
+#[ignore = "requires an external ISO specified by HX6ZIP_TEST_EXTERNAL_ISO"]
 fn external_iso_can_be_extracted() {
-    let path = PathBuf::from(std::env::var_os("MZIP_TEST_EXTERNAL_ISO").unwrap());
+    let path = PathBuf::from(std::env::var_os("HX6ZIP_TEST_EXTERNAL_ISO").unwrap());
     let info = inspect_archive(&path, None, &JobControl::default()).unwrap();
     for mode in [IntegrityMode::Safe, IntegrityMode::Normal] {
         let temp = TempDir::new().unwrap();
@@ -535,9 +535,9 @@ fn external_iso_can_be_extracted() {
 }
 
 #[test]
-#[ignore = "requires an externally generated ISO specified by MZIP_TEST_EXTERNAL_ISO"]
+#[ignore = "requires an externally generated ISO specified by HX6ZIP_TEST_EXTERNAL_ISO"]
 fn external_joliet_iso_can_be_extracted() {
-    let path = PathBuf::from(std::env::var_os("MZIP_TEST_EXTERNAL_ISO").unwrap());
+    let path = PathBuf::from(std::env::var_os("HX6ZIP_TEST_EXTERNAL_ISO").unwrap());
     let info = inspect_archive(&path, None, &JobControl::default()).unwrap();
     assert!(
         info.entries

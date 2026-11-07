@@ -10,7 +10,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveEntry, ArchiveInfo, ArchiveKind, ArchiveTree, ExportedEntries, JobControl,
     ZipDragSource, archive_selection, drag_conflicts, export_entries, extract_drag_entries,
 };
@@ -770,7 +770,7 @@ pub(super) fn drag_archive(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mzip::archive::{
+    use hx6zip::archive::{
         ArchiveFormat, CancellationToken, CreateOptions, IntegrityMode, create_archive,
         inspect_archive,
     };

@@ -128,7 +128,7 @@ pub fn smart_destination(info: &ArchiveInfo, base: &Path) -> Result<PathBuf> {
 }
 
 pub fn named_destination(path: &Path, base: &Path) -> Result<PathBuf> {
-    let stem = mzip_shell_protocol::archive_stem(path)
+    let stem = hx6zip_shell_protocol::archive_stem(path)
         .and_then(|value| value.to_str())
         .context("无法确定解压文件夹名称")?;
     let safe_stem = safe_relative_path(stem)?;
@@ -223,7 +223,7 @@ pub(super) fn read_special_manifest(
         entry.size <= special::MAX_MANIFEST_SIZE as u64,
         "特殊情况清单超过 8 MiB"
     );
-    let temporary = tempfile::Builder::new().prefix("mzip-special-").tempdir()?;
+    let temporary = tempfile::Builder::new().prefix("hx6zip-special-").tempdir()?;
     let relative = safe_relative_path(&entry.name)?;
     extract_archive_staged(
         info,
@@ -657,7 +657,7 @@ impl ExtractionTransaction {
         }
         let modified = fs::metadata(parent)?.modified()?;
         let work = tempfile::Builder::new()
-            .prefix(".mzip-extract-")
+            .prefix(".hx6zip-extract-")
             .tempdir_in(parent)
             .context("无法创建解压事务文件夹")?;
         let parent = fs::canonicalize(parent).context("无法解析事务文件夹路径")?;
@@ -1040,7 +1040,7 @@ where
             let extract = &extract;
             let mut reader = reader.clone();
             let handle = std::thread::Builder::new()
-                .name("mzip-extract".to_owned())
+                .name("hx6zip-extract".to_owned())
                 .spawn_scoped(scope, move || {
                     let result = (|| -> Result<()> {
                         while !failed.load(Ordering::Relaxed) {
@@ -2019,7 +2019,7 @@ mod tests {
                 path.file_name()
                     .unwrap()
                     .to_string_lossy()
-                    .starts_with(".mzip-extract-")
+                    .starts_with(".hx6zip-extract-")
             })
             .unwrap();
         let backup = recovery.join("backup").join("file-0.bin");

@@ -11,7 +11,7 @@ $certificate = New-SelfSignedCertificate `
     -KeyExportPolicy NonExportable `
     -HashAlgorithm 'SHA256' `
     -NotAfter (Get-Date).AddYears(2)
-$certificatePath = Join-Path $OutputDirectory 'MZip-Development.cer'
+$certificatePath = Join-Path $OutputDirectory 'Hx6Zip-Development.cer'
 Export-Certificate -Cert $certificate -FilePath $certificatePath | Out-Null
 
 Write-Output "Certificate thumbprint: $($certificate.Thumbprint)"

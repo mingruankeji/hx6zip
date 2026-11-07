@@ -95,7 +95,7 @@ pub fn split_file(
 }
 
 pub fn merge_files(paths: &[PathBuf], control: &JobControl) -> Result<PathBuf> {
-    let (destination, parts) = mzip_shell_protocol::merge_parts(paths)
+    let (destination, parts) = hx6zip_shell_protocol::merge_parts(paths)
         .context("请选择同一文件夹内、同名且从 .001 开始的连续分片（至少两个）")?;
     control.check_cancelled()?;
     let metadata: Vec<_> = parts

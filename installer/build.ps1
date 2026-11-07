@@ -19,17 +19,17 @@ $msiVersion = [Version]$version
 if ($msiVersion.Major -gt 255 -or $msiVersion.Minor -gt 255 -or $msiVersion.Build -gt 65535) {
     throw 'The Cargo version exceeds MSI version limits (255.255.65535).'
 }
-$executable = Join-Path $projectRoot 'target\release\mzip.exe'
-$shellDll = Join-Path $projectRoot 'target\release\mzip_shell_extension.dll'
+$executable = Join-Path $projectRoot 'target\release\hx6zip.exe'
+$shellDll = Join-Path $projectRoot 'target\release\hx6zip_shell_extension.dll'
 
 if (-not $SkipBuild) {
     Push-Location $projectRoot
     try {
-        cargo build --release --bin mzip --locked
+        cargo build --release --bin hx6zip --locked
         if ($LASTEXITCODE -ne 0) {
             throw "Release build failed with exit code $LASTEXITCODE."
         }
-        cargo build --release -p mzip-shell-extension --locked
+        cargo build --release -p hx6zip-shell-extension --locked
         if ($LASTEXITCODE -ne 0) {
             throw "Shell extension build failed with exit code $LASTEXITCODE."
         }
@@ -54,12 +54,12 @@ if (-not $wix) {
 }
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
-$msi = Join-Path $OutputDirectory "MZip-Setup-$version-x64.msi"
-$portable = Join-Path $OutputDirectory "MZip-Portable-$version-x64.zip"
+$msi = Join-Path $OutputDirectory "Hx6Zip-Setup-$version-x64.msi"
+$portable = Join-Path $OutputDirectory "Hx6Zip-Portable-$version-x64.zip"
 $wxs = Join-Path $PSScriptRoot 'Package.wxs'
 $notices = Join-Path $projectRoot 'THIRD_PARTY_NOTICES.txt'
 $menuScript = Join-Path $PSScriptRoot 'Windows11Menu.ps1'
-$work = Join-Path ([System.IO.Path]::GetTempPath()) ("MZip-build-" + [Guid]::NewGuid().ToString('N'))
+$work = Join-Path ([System.IO.Path]::GetTempPath()) ("Hx6Zip-build-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $work | Out-Null
 
 try {
@@ -68,12 +68,12 @@ try {
         '-arch', 'x64',
         '-ext', 'WixToolset.UI.wixext',
         '-culture', 'zh-CN',
-        '-d', "MZipExe=$executable",
-        '-d', "MZipShellDll=$shellDll",
-        '-d', "MZipMenuScript=$menuScript",
-        '-d', "MZipNotices=$notices",
-        '-d', "MZipIcon=$(Join-Path $projectRoot 'assets\mzip.ico')",
-        '-d', "MZipVersion=$version"
+        '-d', "Hx6ZipExe=$executable",
+        '-d', "Hx6ZipShellDll=$shellDll",
+        '-d', "Hx6ZipMenuScript=$menuScript",
+        '-d', "Hx6ZipNotices=$notices",
+        '-d', "Hx6ZipIcon=$(Join-Path $projectRoot 'assets\hx6zip.ico')",
+        '-d', "Hx6ZipVersion=$version"
     )
 
     if (-not $CertificateThumbprint -and -not $Unsigned) {
@@ -135,7 +135,7 @@ try {
         # Processes started from the Windows 11 menu inherit the package identity, so the
         # taskbar uses these target-size logos instead of the executable's window icon.
         Add-Type -AssemblyName System.Drawing
-        $logoSource = [System.Drawing.Image]::FromFile((Join-Path $projectRoot 'assets\mzip.png'))
+        $logoSource = [System.Drawing.Image]::FromFile((Join-Path $projectRoot 'assets\hx6zip.png'))
         try {
             foreach ($size in @(16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256)) {
                 $bitmap = New-Object System.Drawing.Bitmap($size, $size)
@@ -168,7 +168,7 @@ try {
             throw "PRI resource index failed with exit code $LASTEXITCODE."
         }
 
-        $package = Join-Path $work 'MZip-Menu.msix'
+        $package = Join-Path $work 'Hx6Zip-Menu.msix'
         $makeAppx = Join-Path $sdk.FullName 'x64\makeappx.exe'
         # The executable and COM DLL live in the MSI's external location.
         & $makeAppx pack /d $stage /p $package /o /nv
@@ -180,18 +180,18 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw "Sparse package signing failed with exit code $LASTEXITCODE."
         }
-        $publicCertificate = Join-Path $OutputDirectory 'MZip-Development.cer'
+        $publicCertificate = Join-Path $OutputDirectory 'Hx6Zip-Development.cer'
         Export-Certificate -Cert $certificate -FilePath $publicCertificate | Out-Null
         $removeTrust = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Remove-CertificateTrust.ps1') -Raw).Replace('__THUMBPRINT__', $thumbprint)
         $removeTrustCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($removeTrust))
         $wixArguments += @(
-            '-d', "MZipRemoveTrustCommand=$removeTrustCommand",
-            '-d', 'MZipHasSignedPackage=1',
-            '-d', "MZipSparsePackage=$package",
-            '-d', "MZipCertificate=$publicCertificate"
+            '-d', "Hx6ZipRemoveTrustCommand=$removeTrustCommand",
+            '-d', 'Hx6ZipHasSignedPackage=1',
+            '-d', "Hx6ZipSparsePackage=$package",
+            '-d', "Hx6ZipCertificate=$publicCertificate"
         )
     } else {
-        $wixArguments += @('-d', 'MZipHasSignedPackage=0')
+        $wixArguments += @('-d', 'Hx6ZipHasSignedPackage=0')
         Write-Warning 'No signing certificate was provided. The installer will use the traditional menu only.'
     }
 

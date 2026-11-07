@@ -1,13 +1,13 @@
 use std::{fs, path::Path};
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveEdit, ArchiveFormat, CancellationToken, CreateOptions, ExtractOptions, IntegrityMode,
     JobControl, archive_selection, create_archive, edit_archive, extract_archive,
     extract_drag_entries, inspect_archive, smart_destination,
 };
 use tempfile::TempDir;
 
-const MANIFEST: &str = "Special_Cases_List.mmzip";
+const MANIFEST: &str = "Special_Cases_List.mhx6zip";
 
 #[test]
 fn diagnostic_manifests_are_kept_after_extraction() {
@@ -447,7 +447,7 @@ fn malformed_manifest_warns_without_undoing_ordinary_extraction() {
         for mode in [IntegrityMode::Normal, IntegrityMode::Safe] {
             let temp = TempDir::new().unwrap();
             let manifest = temp.path().join(MANIFEST);
-            fs::write(&manifest, b"{\"not\":\"an mzip manifest\"}").unwrap();
+            fs::write(&manifest, b"{\"not\":\"an hx6zip manifest\"}").unwrap();
             let archive = temp.path().join(format!("test.{}", format.extension()));
             create(&manifest, &archive, format, None, mode);
             let control = JobControl::default().with_integrity(mode);

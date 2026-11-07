@@ -17,7 +17,7 @@ use super::{
     AppView, JobKind, Page, ShellSetup, format_size,
     progress::{countdown_seconds, format_duration},
 };
-use mzip::archive::{ArchiveFormat, IntegrityMode};
+use hx6zip::archive::{ArchiveFormat, IntegrityMode};
 
 #[derive(Clone, Copy)]
 struct Palette {
@@ -84,7 +84,7 @@ impl Render for AppView {
         };
 
         div()
-            .id("mzip-root")
+            .id("hx6zip-root")
             .size_full()
             .flex()
             .flex_col()
@@ -288,6 +288,16 @@ impl AppView {
                                             this.set_format(ArchiveFormat::SevenZip, cx)
                                         },
                                     )),
+                                )
+                                .child(
+                                    format_button(
+                                        "shell-format-tar",
+                                        "TAR",
+                                        self.format == ArchiveFormat::Tar,
+                                    )
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| this.set_format(ArchiveFormat::Tar, cx),
+                                    )),
                                 ),
                         )
                     })
@@ -439,17 +449,17 @@ impl AppView {
                             .child(
                                 if matches!(self.job_kind, JobKind::Split | JobKind::Merge) {
                                     if self.job_kind == JobKind::Split {
-                                        "MZip · 分割文件".to_owned()
+                                        "Hx6Zip · 分割文件".to_owned()
                                     } else {
-                                        "MZip · 合并文件".to_owned()
+                                        "Hx6Zip · 合并文件".to_owned()
                                     }
                                 } else if self.job_kind == JobKind::CreateEach {
-                                    "MZip · 逐个压缩为 ZIP".to_owned()
+                                    "Hx6Zip · 逐个压缩为 ZIP".to_owned()
                                 } else if self.shell_extract {
-                                    "MZip · 解压".to_owned()
+                                    "Hx6Zip · 解压".to_owned()
                                 } else {
                                     format!(
-                                        "MZip · {} 压缩",
+                                        "Hx6Zip · {} 压缩",
                                         self.format.extension().to_ascii_uppercase()
                                     )
                                 },
@@ -619,7 +629,7 @@ impl AppView {
                                 div()
                                     .text_size(px(20.0))
                                     .font_weight(FontWeight::BOLD)
-                                    .child("MZip"),
+                                    .child("Hx6Zip"),
                             )
                             .child(
                                 div()
@@ -1513,6 +1523,19 @@ impl AppView {
                                                 this.set_format(ArchiveFormat::SevenZip, cx)
                                             }),
                                         ),
+                                    )
+                                    .child(
+                                        format_button(
+                                            "format-tar",
+                                            "TAR",
+                                            self.format == ArchiveFormat::Tar,
+                                        )
+                                        .disabled(busy)
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
+                                                this.set_format(ArchiveFormat::Tar, cx)
+                                            }),
+                                        ),
                                     ),
                             )
                             .child(
@@ -1581,7 +1604,11 @@ impl AppView {
                                     .pl(px(86.0))
                                     .text_size(px(11.0))
                                     .text_color(palette.muted)
-                                    .child("密码留空为不加密；ZIP 的文件名仍可见。"),
+                                    .child(if self.format == ArchiveFormat::Tar {
+                                        "TAR 格式不支持加密。"
+                                    } else {
+                                        "密码留空为不加密；ZIP 的文件名仍可见。"
+                                    }),
                             )
                             .child(
                                 div().pl(px(86.0)).child(

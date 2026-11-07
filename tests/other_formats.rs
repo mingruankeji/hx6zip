@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveKind, CancellationToken, Compression, ExtractOptions, JobControl, SUPPORTED_EXTENSIONS,
     extract_archive, inspect_archive, smart_destination,
 };
@@ -92,14 +92,14 @@ fn all_advertised_extensions_are_registered_and_detected() {
         let path = PathBuf::from(format!("sample.{extension}"));
         assert!(ArchiveKind::from_path(&path).is_ok(), "{extension}");
         assert!(
-            manifest.contains(&format!("Name=\".{extension}\" Value=\"MZip.Archive.1\"")),
+            manifest.contains(&format!("Name=\".{extension}\" Value=\"Hx6Zip.Archive.1\"")),
             "missing default-app registration for {extension}"
         );
         assert!(
             manifest.contains(&format!("Software\\Classes\\.{extension}\\OpenWithProgids")),
             "missing Open With registration for {extension}"
         );
-        assert!(mzip_shell_protocol::can_attempt_extraction(&path));
+        assert!(hx6zip_shell_protocol::can_attempt_extraction(&path));
     }
     assert_eq!(
         ArchiveKind::from_path(Path::new("example.TAR.GZ")).unwrap(),
@@ -107,7 +107,7 @@ fn all_advertised_extensions_are_registered_and_detected() {
     );
     assert!(ArchiveKind::from_path(Path::new("example.exe")).is_err());
     assert!(manifest.contains(r"Software\RegisteredApplications"));
-    assert!(manifest.contains(r"Software\MZip\Capabilities"));
+    assert!(manifest.contains(r"Software\Hx6Zip\Capabilities"));
     assert!(!manifest.contains("UserChoice"));
 }
 

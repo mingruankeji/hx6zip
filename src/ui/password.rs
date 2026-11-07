@@ -8,7 +8,7 @@ use gpui_kit::{
     },
     *,
 };
-use mzip::archive::{Cancelled, PasswordPrompt};
+use hx6zip::archive::{Cancelled, PasswordPrompt};
 
 use super::AppView;
 
@@ -127,7 +127,7 @@ mod tests {
         cx: &mut TestAppContext,
     ) {
         use gpui_kit::{base::Root, *};
-        use mzip::archive::{ArchiveFormat, CreateOptions, JobControl, create_archive};
+        use hx6zip::archive::{ArchiveFormat, CreateOptions, JobControl, create_archive};
         use std::{
             fs,
             time::{Duration, Instant},

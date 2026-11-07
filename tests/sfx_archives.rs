@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveFormat, ArchiveKind, CancellationToken, Cancelled, CreateOptions, ExtractOptions,
     JobControl, create_archive, extract_archive, inspect_archive, named_destination,
 };

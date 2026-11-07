@@ -132,7 +132,7 @@ impl ZipDragSource {
         let (ready_sender, ready_receiver) = mpsc::sync_channel(0);
         let source = self.clone();
         let worker = thread::Builder::new()
-            .name("mzip-zip-drag".to_owned())
+            .name("hx6zip-zip-drag".to_owned())
             .spawn(move || source.read_requests(&entry, receiver, ready_sender))
             .context("无法启动 ZIP 拖放读取线程")?;
         ready_receiver

@@ -15,9 +15,9 @@ use gpui_kit::{
     WindowBounds, WindowOptions, application, assets, div, init, open_window, prelude::*, px, rgb,
     size,
 };
-use mzip::api_client::tree::{self, TreeItem};
-use mzip::api_client::vars::{self, Variables};
-use mzip::api_client::{
+use hx6zip::api_client::tree::{self, TreeItem};
+use hx6zip::api_client::vars::{self, Variables};
+use hx6zip::api_client::{
     ApiKeyLocation, AssertionResult, AuthType, BodyType, Environment, EnvironmentCollection,
     RequestSettings, RequestStore, SavedRequest, StoreLockError, execute_request, format_size,
     generate_curl,
@@ -2675,7 +2675,7 @@ impl Render for ApiTester {
                                 div()
                                     .text_size(px(14.))
                                     .font_weight(FontWeight::SEMIBOLD)
-                                    .child("MZip API"),
+                                    .child("Hx6Zip API"),
                             )
                             .child(
                                 div()
@@ -3178,7 +3178,7 @@ fn with_hint(text: &'static str, content: impl IntoElement) -> AnyElement {
 #[cfg(all(test, feature = "ui-tests"))]
 mod ui_tests;
 
-const WINDOW_TITLE: &str = "MZip - API 测试工具";
+const WINDOW_TITLE: &str = "Hx6Zip - API 测试工具";
 
 pub fn run() {
     let _store_lock = match RequestStore::acquire_lock() {

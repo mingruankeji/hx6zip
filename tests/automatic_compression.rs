@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use mzip::{
+use hx6zip::{
     archive::{
         ArchiveFormat, CancellationToken, Cancelled, JobControl, create_archive_auto,
         create_archives_separately, inspect_archive,

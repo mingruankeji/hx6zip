@@ -6,7 +6,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveFormat, CancellationToken, Cancelled, CreateOptions, ExtractOptions, JobControl,
     create_archive, extract_archive, extract_conflicts, inspect_archive, named_destination,
     smart_destination,

@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use mzip::archive::{ArchiveInfo, ExtractOptions, JobControl, extract_archive, inspect_archive};
+use hx6zip::archive::{ArchiveInfo, ExtractOptions, JobControl, extract_archive, inspect_archive};
 use tempfile::TempDir;
 
 #[path = "support/direct_drag.rs"]
@@ -212,7 +212,7 @@ fn rar5_direct_drag_preserves_password_and_solid_decoding() {
         if password.is_some() {
             let output = TempDir::new().unwrap();
             assert!(
-                mzip::archive::extract_drag_entries(
+                hx6zip::archive::extract_drag_entries(
                     &info,
                     &[entry.to_owned()],
                     output.path(),

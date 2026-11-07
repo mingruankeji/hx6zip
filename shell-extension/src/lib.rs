@@ -10,7 +10,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail, ensure};
-use mzip_shell_protocol::{
+use hx6zip_shell_protocol::{
     CompressionAction, can_attempt_extraction, launch_compression, selected_paths,
 };
 use windows::{
@@ -101,7 +101,7 @@ impl Kind {
 
     fn title(self) -> PCWSTR {
         match self {
-            Self::Root => w!("MZip"),
+            Self::Root => w!("Hx6Zip"),
             Self::Zip => w!("创建 ZIP 压缩包"),
             Self::SevenZip => w!("创建 7z 压缩包"),
             Self::Open => w!("打开和解压"),
@@ -118,27 +118,27 @@ impl Kind {
 
 fn executable_path() -> Result<PathBuf> {
     let module = MODULE.load(Ordering::SeqCst);
-    ensure!(module != 0, "无法定位 MZip 右键菜单模块");
+    ensure!(module != 0, "无法定位 Hx6Zip 右键菜单模块");
     let mut buffer = vec![0u16; 32768];
     let length =
         unsafe { GetModuleFileNameW(Some(HMODULE(module as *mut c_void)), buffer.as_mut_slice()) }
             as usize;
     ensure!(
         length > 0 && length < buffer.len(),
-        "无法读取 MZip 右键菜单模块路径"
+        "无法读取 Hx6Zip 右键菜单模块路径"
     );
     let module_path = PathBuf::from(OsString::from_wide(&buffer[..length]));
-    Ok(module_path.with_file_name("mzip.exe"))
+    Ok(module_path.with_file_name("hx6zip.exe"))
 }
 
 fn show_error(error: &anyhow::Error) -> Error {
-    let message = format!("无法执行 MZip 右键菜单：{error:#}");
+    let message = format!("无法执行 Hx6Zip 右键菜单：{error:#}");
     let wide: Vec<_> = message.encode_utf16().chain(Some(0)).collect();
     unsafe {
         MessageBoxW(
             None,
             PCWSTR(wide.as_ptr()),
-            w!("MZip"),
+            w!("Hx6Zip"),
             MB_OK | MB_ICONERROR,
         )
     };
@@ -167,7 +167,7 @@ impl IExplorerCommand_Impl for ExplorerCommand_Impl {
             let paths =
                 selected_paths(selection).map_err(|error| Error::new(E_FAIL, error.to_string()))?;
             if paths.len() == 1
-                && let Some(stem) = mzip_shell_protocol::archive_stem(&paths[0])
+                && let Some(stem) = hx6zip_shell_protocol::archive_stem(&paths[0])
             {
                 let name = stem.to_string_lossy();
                 let title: Vec<_> = format!("解压到「{name}」文件夹")
@@ -205,9 +205,9 @@ impl IExplorerCommand_Impl for ExplorerCommand_Impl {
             let paths =
                 selected_paths(selection).map_err(|error| Error::new(E_FAIL, error.to_string()))?;
             let visible = if self.kind == Kind::Split {
-                mzip_shell_protocol::can_split(&paths)
+                hx6zip_shell_protocol::can_split(&paths)
             } else {
-                mzip_shell_protocol::can_merge(&paths)
+                hx6zip_shell_protocol::can_merge(&paths)
             };
             return Ok(if visible {
                 ECS_ENABLED.0 as u32
@@ -253,15 +253,15 @@ impl IExplorerCommand_Impl for ExplorerCommand_Impl {
                 Kind::Split | Kind::Merge => {
                     let paths = selected_paths(selection)?;
                     let valid = if self.kind == Kind::Split {
-                        mzip_shell_protocol::can_split(&paths)
+                        hx6zip_shell_protocol::can_split(&paths)
                     } else {
-                        mzip_shell_protocol::can_merge(&paths)
+                        hx6zip_shell_protocol::can_merge(&paths)
                     };
                     ensure!(
                         valid,
                         "请选择一个文件进行分割，或选择同名且从 .001 开始的连续分片进行合并"
                     );
-                    mzip_shell_protocol::launch_compression_paths(
+                    hx6zip_shell_protocol::launch_compression_paths(
                         &executable,
                         &paths,
                         if self.kind == Kind::Split {
@@ -284,7 +284,7 @@ impl IExplorerCommand_Impl for ExplorerCommand_Impl {
                 Kind::Open | Kind::ExtractHere | Kind::ExtractFolder | Kind::ExtractTo => {
                     let paths = selected_paths(selection)?;
                     ensure!(
-                        mzip_shell_protocol::can_extract_selection(&paths),
+                        hx6zip_shell_protocol::can_extract_selection(&paths),
                         "请选择一个可尝试解压的文件"
                     );
                     let mut command = Command::new(executable);
@@ -300,10 +300,10 @@ impl IExplorerCommand_Impl for ExplorerCommand_Impl {
                         }
                         _ => {}
                     }
-                    command.arg(&paths[0]).spawn().context("无法启动 MZip")?;
+                    command.arg(&paths[0]).spawn().context("无法启动 Hx6Zip")?;
                     Ok(())
                 }
-                Kind::Root => bail!("请选择 MZip 子菜单中的操作"),
+                Kind::Root => bail!("请选择 Hx6Zip 子菜单中的操作"),
             }
         })();
         result.map_err(|error| show_error(&error))
@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn archive_filter_matches_supported_extensions() {
-        for extension in mzip_shell_protocol::SUPPORTED_EXTENSIONS {
+        for extension in hx6zip_shell_protocol::SUPPORTED_EXTENSIONS {
             assert!(can_attempt_extraction(Path::new(&format!(
                 "example.{}",
                 extension.to_ascii_uppercase()

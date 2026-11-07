@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveFormat, ArchiveInfo, CancellationToken, CreateOptions, IntegrityMode, JobControl,
     create_archive, drag_conflicts, extract_drag_entries as extract_with_overwrite,
     inspect_archive,
@@ -69,7 +69,7 @@ fn check_selected_roots(format: ArchiveFormat) {
                         .unwrap()
                         .file_name()
                         .to_string_lossy()
-                        .starts_with("mzip-export-")
+                        .starts_with("hx6zip-export-")
                 }));
             })
             .with_integrity(mode);
@@ -98,7 +98,7 @@ fn check_selected_roots(format: ArchiveFormat) {
                     .unwrap()
                     .file_name()
                     .to_string_lossy()
-                    .starts_with(".mzip-extract-")
+                    .starts_with(".hx6zip-extract-")
             }));
         }
     }
@@ -287,11 +287,11 @@ fn sevenzip_drag_preserves_implicit_unicode_directories_and_rejects_corruption()
 #[ignore = "creates a manual drag fixture at an explicitly supplied path"]
 fn prepare_sevenzip_drag_probe() {
     let root =
-        std::path::PathBuf::from(std::env::var_os("MZIP_DRAG_PROBE_ROOT").expect("probe root"));
-    let archive = root.join("MZipDragProbe.7z");
+        std::path::PathBuf::from(std::env::var_os("HX6ZIP_DRAG_PROBE_ROOT").expect("probe root"));
+    let archive = root.join("Hx6ZipDragProbe.7z");
     assert!(!archive.exists());
     let temp = tempfile::tempdir().unwrap();
-    let source = temp.path().join("MZipDragProbe");
+    let source = temp.path().join("Hx6ZipDragProbe");
     fs::create_dir_all(source.join("empty")).unwrap();
     let mut file = fs::File::create(source.join("payload.bin")).unwrap();
     let mut seed = 0x6f13_9852_17ac_f839u64;
@@ -468,7 +468,7 @@ fn direct_conflict_check_rejects_file_directory_type_conflicts() {
 #[test]
 #[ignore = "manual release-mode throughput comparison; writes generated test data only"]
 fn compare_direct_and_regular_extraction_throughput() {
-    use mzip::archive::{ExtractOptions, extract_archive};
+    use hx6zip::archive::{ExtractOptions, extract_archive};
     use std::time::Instant;
 
     let temp = tempfile::tempdir().unwrap();

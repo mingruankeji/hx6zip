@@ -10,7 +10,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveFormat, CancellationToken, Cancelled, CreateOptions, ExtractOptions, IntegrityMode,
     JobControl,
     create_archive, extract_archive, inspect_archive,
@@ -73,7 +73,7 @@ fn assert_no_work(temp: &TempDir) {
             .unwrap()
             .file_name()
             .to_string_lossy()
-            .starts_with(".mzip-")
+            .starts_with(".hx6zip-")
     }));
 }
 

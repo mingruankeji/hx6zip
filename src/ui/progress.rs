@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use mzip::archive::Progress;
+use hx6zip::archive::Progress;
 
 pub(super) struct CompressionTiming {
     started_at: Instant,

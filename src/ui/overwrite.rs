@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Result, bail};
 use gpui_kit::Window;
-use mzip::archive::{ArchiveInfo, ExtractOptions, JobControl, extract_archive, extract_conflicts};
+use hx6zip::archive::{ArchiveInfo, ExtractOptions, JobControl, extract_archive, extract_conflicts};
 
 #[derive(Debug)]
 pub(super) struct ConfirmationCancelled;
@@ -172,7 +172,7 @@ fn extract_with(
 mod tests {
     use std::{collections::BTreeSet, fs, path::Path};
 
-    use mzip::archive::{
+    use hx6zip::archive::{
         ArchiveFormat, CancellationToken, Cancelled, CreateOptions, IntegrityMode, create_archive,
         inspect_archive,
     };

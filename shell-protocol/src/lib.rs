@@ -4,7 +4,7 @@ pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "zstd", "tzst", "br", "brotli", "tbr",
 ];
 
-// Keep the traditional menu's MZipArchiveFilter in sync; the test below checks it.
+// Keep the traditional menu's Hx6ZipArchiveFilter in sync; the test below checks it.
 pub const EXTRACT_EXCLUDED_EXTENSIONS: &[&str] = &[
     "txt", "log", "md", "csv", "json", "xml", "yaml", "yml", "toml", "ini", "cfg",
     "rtf", "pdf", "htm", "html", "css", "js", "ts", "jsx", "tsx", "c", "h", "cpp",
@@ -77,11 +77,11 @@ mod extraction_tests {
         assert!(filter.contains(" AND NOT ("));
         assert!(filter.contains("NOT System.ItemType:=\"Directory\""));
         assert_eq!(
-            manifest.matches("Value=\"$(var.MZipArchiveFilter)\"").count(),
+            manifest.matches("Value=\"$(var.Hx6ZipArchiveFilter)\"").count(),
             4
         );
         assert!(!manifest.contains("Software\\Classes\\.exe\\OpenWithProgids"));
-        assert!(!manifest.contains("Name=\".exe\" Value=\"MZip.Archive.1\""));
+        assert!(!manifest.contains("Name=\".exe\" Value=\"Hx6Zip.Archive.1\""));
     }
 }
 
@@ -310,7 +310,7 @@ mod windows_protocol {
             })
             .stdin(Stdio::piped())
             .spawn()
-            .context("无法启动 MZip 操作窗口")?;
+            .context("无法启动 Hx6Zip 操作窗口")?;
         child
             .stdin
             .take()

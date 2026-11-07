@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveFormat, CreateOptions, ExtractOptions, JobControl, create_archive, extract_archive,
     inspect_archive,
 };
@@ -38,6 +38,7 @@ fn make_large_archive(root: &Path, format: ArchiveFormat) -> PathBuf {
             }
             writer.finish().unwrap().flush().unwrap();
         }
+        ArchiveFormat::Tar => unreachable!("TAR has a fixed entry limit"),
     }
     path
 }

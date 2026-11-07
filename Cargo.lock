@@ -4326,7 +4326,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
 
 [[package]]
-name = "mzip"
+name = "hx6zip"
 version = "0.1.2"
 dependencies = [
  "anyhow",
@@ -4343,7 +4343,7 @@ dependencies = [
  "gpui-pre",
  "iso9660-forensic-core",
  "lzma-rust2 0.23.0",
- "mzip-shell-protocol",
+ "hx6zip-shell-protocol",
  "raw-window-handle",
  "reqwest",
  "rfd",
@@ -4362,18 +4362,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "mzip-shell-extension"
+name = "hx6zip-shell-extension"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "mzip-shell-protocol",
+ "hx6zip-shell-protocol",
  "tempfile",
  "windows 0.61.3",
  "windows-core 0.61.2",
 ]
 
 [[package]]
-name = "mzip-shell-protocol"
+name = "hx6zip-shell-protocol"
 version = "0.1.1"
 dependencies = [
  "anyhow",

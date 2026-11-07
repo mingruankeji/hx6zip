@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use mzip::archive::{
+use hx6zip::archive::{
     ArchiveFormat, CancellationToken, CreateOptions, ExtractOptions, JobControl, create_archive,
     extract_archive, inspect_archive,
 };
@@ -111,14 +111,14 @@ fn benchmark_archive_workloads() {
 }
 
 #[test]
-#[ignore = "compresses the existing directory selected by MZIP_BENCH_SOURCE"]
+#[ignore = "compresses the existing directory selected by HX6ZIP_BENCH_SOURCE"]
 fn benchmark_zip_directory() {
     let source = fs::canonicalize(
-        std::env::var_os("MZIP_BENCH_SOURCE").expect("set MZIP_BENCH_SOURCE to an input directory"),
+        std::env::var_os("HX6ZIP_BENCH_SOURCE").expect("set HX6ZIP_BENCH_SOURCE to an input directory"),
     )
     .unwrap();
     assert!(source.is_dir());
-    let output_parent = std::env::var_os("MZIP_BENCH_OUTPUT")
+    let output_parent = std::env::var_os("HX6ZIP_BENCH_OUTPUT")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(std::env::temp_dir);
     let output_parent = fs::canonicalize(output_parent).unwrap();
@@ -128,21 +128,21 @@ fn benchmark_zip_directory() {
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .collect::<Vec<_>>();
-    let archive = root.path().join("mzip.zip");
+    let archive = root.path().join("hx6zip.zip");
     let started = Instant::now();
     let last_report = Arc::new(std::sync::Mutex::new(started));
     let first_report = std::sync::Once::new();
     let control = JobControl::new(CancellationToken::default(), move |progress| {
         first_report.call_once(|| {
             println!(
-                "MZip scan finished after {:.1}s",
+                "Hx6Zip scan finished after {:.1}s",
                 started.elapsed().as_secs_f64()
             );
         });
         let mut last = last_report.lock().unwrap();
         if last.elapsed() >= Duration::from_secs(10) {
             println!(
-                "MZip elapsed={:.1}s input={}/{} output={:?}",
+                "Hx6Zip elapsed={:.1}s input={}/{} output={:?}",
                 started.elapsed().as_secs_f64(),
                 progress.completed_bytes,
                 progress.total_bytes,
@@ -163,7 +163,7 @@ fn benchmark_zip_directory() {
     )
     .unwrap();
     println!(
-        "MZip directory: create={:.3}s archive={} bytes",
+        "Hx6Zip directory: create={:.3}s archive={} bytes",
         started.elapsed().as_secs_f64(),
         fs::metadata(&archive).unwrap().len(),
     );
@@ -174,13 +174,13 @@ fn benchmark_zip_directory() {
         bytes += io::copy(&mut entry, &mut io::sink()).unwrap();
     }
     println!(
-        "MZip verified: {} entries, {bytes} bytes, all CRCs checked",
+        "Hx6Zip verified: {} entries, {bytes} bytes, all CRCs checked",
         zip.len()
     );
     drop(zip);
     fs::remove_file(&archive).unwrap();
 
-    if let Some(seven_zip) = std::env::var_os("MZIP_BENCH_7Z") {
+    if let Some(seven_zip) = std::env::var_os("HX6ZIP_BENCH_7Z") {
         let external_archive = root.path().join("7zip.zip");
         let started = Instant::now();
         run_7zip(
@@ -204,7 +204,7 @@ fn benchmark_zip_directory() {
     }
 }
 
-/// MZip's ZIP compression uses every logical processor; give 7-Zip the same.
+/// Hx6Zip's ZIP compression uses every logical processor; give 7-Zip the same.
 fn seven_zip_threads() -> String {
     let threads = std::thread::available_parallelism().map_or(1, |count| count.get());
     format!("-mmt={threads}")
@@ -213,7 +213,7 @@ fn seven_zip_threads() -> String {
 fn run_7zip(command: &mut Command) {
     let output = command
         .output()
-        .expect("无法启动 7-Zip；请设置 MZIP_BENCH_7Z 为 7z.exe 的完整路径");
+        .expect("无法启动 7-Zip；请设置 HX6ZIP_BENCH_7Z 为 7z.exe 的完整路径");
     assert!(
         output.status.success(),
         "7-Zip 失败：{}\n{}",
@@ -244,13 +244,13 @@ fn compare_zip_workload(
         .unwrap();
     }
 
-    let mut mzip_create = Vec::new();
+    let mut hx6zip_create = Vec::new();
     let mut sevenzip_create = Vec::new();
-    let mut mzip_extract = Vec::new();
+    let mut hx6zip_extract = Vec::new();
     let mut sevenzip_extract = Vec::new();
     let mut archive_sizes = (0, 0);
     for round in 0..3 {
-        let archive = root.join(format!("{name}-mzip-{round}.zip"));
+        let archive = root.join(format!("{name}-hx6zip-{round}.zip"));
         let external_archive = root.join(format!("{name}-7zip-{round}.zip"));
         let control = JobControl::default();
         let started = Instant::now();
@@ -265,7 +265,7 @@ fn compare_zip_workload(
             &control,
         )
         .unwrap();
-        mzip_create.push(started.elapsed());
+        hx6zip_create.push(started.elapsed());
 
         let started = Instant::now();
         run_7zip(
@@ -282,13 +282,13 @@ fn compare_zip_workload(
             fs::metadata(&external_archive).unwrap().len(),
         );
 
-        let mzip_output = root.join(format!("{name}-mzip-output-{round}"));
+        let hx6zip_output = root.join(format!("{name}-hx6zip-output-{round}"));
         let started = Instant::now();
         let info = inspect_archive(&archive, None, &control).unwrap();
         extract_archive(
             &info,
             &ExtractOptions {
-                destination: mzip_output.clone(),
+                destination: hx6zip_output.clone(),
                 password: None,
                 selected: None,
                 overwrite: false,
@@ -296,7 +296,7 @@ fn compare_zip_workload(
             &control,
         )
         .unwrap();
-        mzip_extract.push(started.elapsed());
+        hx6zip_extract.push(started.elapsed());
 
         let external_output = root.join(format!("{name}-7zip-output-{round}"));
         let mut output_argument = OsString::from("-o");
@@ -329,7 +329,7 @@ fn compare_zip_workload(
             let file = format!("{index:05}.bin");
             let expected = fs::read(source.join(&file)).unwrap();
             assert_eq!(
-                fs::read(mzip_output.join(name).join(&file)).unwrap(),
+                fs::read(hx6zip_output.join(name).join(&file)).unwrap(),
                 expected
             );
             assert_eq!(
@@ -346,10 +346,10 @@ fn compare_zip_workload(
     }
 
     println!(
-        "{name:12} ZIP median of 3: create MZip={:.3}s 7-Zip={:.3}s; extract MZip={:.3}s 7-Zip={:.3}s; sizes MZip={} 7-Zip={} bytes",
-        median_seconds(mzip_create),
+        "{name:12} ZIP median of 3: create Hx6Zip={:.3}s 7-Zip={:.3}s; extract Hx6Zip={:.3}s 7-Zip={:.3}s; sizes Hx6Zip={} 7-Zip={} bytes",
+        median_seconds(hx6zip_create),
         median_seconds(sevenzip_create),
-        median_seconds(mzip_extract),
+        median_seconds(hx6zip_extract),
         median_seconds(sevenzip_extract),
         archive_sizes.0,
         archive_sizes.1,
@@ -384,11 +384,11 @@ fn compare_sevenzip_workload(
         )
         .unwrap();
     }
-    let mut mzip = Vec::new();
+    let mut hx6zip = Vec::new();
     let mut external = Vec::new();
     let mut sizes = (0, 0);
     for round in 0..3 {
-        let archive = root.join(format!("{name}-mzip-{round}.7z"));
+        let archive = root.join(format!("{name}-hx6zip-{round}.7z"));
         let external_archive = root.join(format!("{name}-7zip-{round}.7z"));
         let started = Instant::now();
         create_archive(
@@ -402,7 +402,7 @@ fn compare_sevenzip_workload(
             &JobControl::default(),
         )
         .unwrap();
-        mzip.push(started.elapsed());
+        hx6zip.push(started.elapsed());
         let started = Instant::now();
         run_7zip(
             Command::new(seven_zip)
@@ -421,10 +421,10 @@ fn compare_sevenzip_workload(
         );
     }
     let input = (file_count * file_size) as f64 / (1024.0 * 1024.0);
-    let (mzip, external) = (median_seconds(mzip), median_seconds(external));
+    let (hx6zip, external) = (median_seconds(hx6zip), median_seconds(external));
     println!(
-        "{name:12} 7z median of 3: MZip={mzip:.3}s ({:.1} MB/s) PeaZip-normal={external:.3}s ({:.1} MB/s); sizes MZip={} 7-Zip={} bytes",
-        input / mzip,
+        "{name:12} 7z median of 3: Hx6Zip={hx6zip:.3}s ({:.1} MB/s) PeaZip-normal={external:.3}s ({:.1} MB/s); sizes Hx6Zip={} 7-Zip={} bytes",
+        input / hx6zip,
         input / external,
         sizes.0,
         sizes.1,
@@ -434,7 +434,7 @@ fn compare_sevenzip_workload(
 #[test]
 #[ignore = "requires 7-Zip and compares synthetic 7z workloads in release mode"]
 fn benchmark_sevenzip_against_7zip() {
-    let seven_zip = std::env::var_os("MZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
+    let seven_zip = std::env::var_os("HX6ZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
     let root = TempDir::new().unwrap();
     compare_sevenzip_workload(root.path(), &seven_zip, "small-files", 500, 1024, false);
     compare_sevenzip_workload(
@@ -458,7 +458,7 @@ fn benchmark_sevenzip_against_7zip() {
 #[test]
 #[ignore = "requires 7-Zip and compares repeated files in release mode"]
 fn benchmark_sevenzip_repeated_against_7zip() {
-    let seven_zip = std::env::var_os("MZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
+    let seven_zip = std::env::var_os("HX6ZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
     let root = TempDir::new().unwrap();
     compare_sevenzip_workload(
         root.path(),
@@ -471,15 +471,15 @@ fn benchmark_sevenzip_repeated_against_7zip() {
 }
 
 #[test]
-#[ignore = "requires 7-Zip and compresses the directory selected by MZIP_BENCH_SOURCE"]
+#[ignore = "requires 7-Zip and compresses the directory selected by HX6ZIP_BENCH_SOURCE"]
 fn benchmark_sevenzip_directory_against_7zip() {
-    let seven_zip = std::env::var_os("MZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
+    let seven_zip = std::env::var_os("HX6ZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
     let source = fs::canonicalize(
-        std::env::var_os("MZIP_BENCH_SOURCE").expect("set MZIP_BENCH_SOURCE to an input directory"),
+        std::env::var_os("HX6ZIP_BENCH_SOURCE").expect("set HX6ZIP_BENCH_SOURCE to an input directory"),
     )
     .unwrap();
     let root = TempDir::new().unwrap();
-    let archive = root.path().join("mzip.7z");
+    let archive = root.path().join("hx6zip.7z");
     let started = Instant::now();
     create_archive(
         &CreateOptions {
@@ -492,7 +492,7 @@ fn benchmark_sevenzip_directory_against_7zip() {
         &JobControl::default(),
     )
     .unwrap();
-    let mzip = started.elapsed().as_secs_f64();
+    let hx6zip = started.elapsed().as_secs_f64();
     let external_archive = root.path().join("7zip.7z");
     let started = Instant::now();
     run_7zip(
@@ -506,7 +506,7 @@ fn benchmark_sevenzip_directory_against_7zip() {
     let external = started.elapsed().as_secs_f64();
     run_7zip(Command::new(&seven_zip).args(["t", "-bd"]).arg(&archive));
     println!(
-        "directory 7z: MZip={mzip:.3}s PeaZip-normal={external:.3}s; sizes MZip={} 7-Zip={} bytes",
+        "directory 7z: Hx6Zip={hx6zip:.3}s PeaZip-normal={external:.3}s; sizes Hx6Zip={} 7-Zip={} bytes",
         fs::metadata(&archive).unwrap().len(),
         fs::metadata(&external_archive).unwrap().len(),
     );
@@ -515,7 +515,7 @@ fn benchmark_sevenzip_directory_against_7zip() {
 #[test]
 #[ignore = "requires 7-Zip and compares synthetic workloads in release mode"]
 fn benchmark_zip_against_7zip() {
-    let seven_zip = std::env::var_os("MZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
+    let seven_zip = std::env::var_os("HX6ZIP_BENCH_7Z").unwrap_or_else(|| OsString::from("7z"));
     let root = TempDir::new().unwrap();
     compare_zip_workload(root.path(), &seven_zip, "small-files", 500, 1024);
     compare_zip_workload(root.path(), &seven_zip, "medium-files", 8, 2 * 1024 * 1024);

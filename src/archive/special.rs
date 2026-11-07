@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use super::common::{collision_key, safe_relative_path};
 
-pub(super) const MANIFEST_NAME: &str = "Special_Cases_List.mmzip";
+pub(super) const MANIFEST_NAME: &str = "Special_Cases_List.mhx6zip";
 pub(super) const MAX_MANIFEST_SIZE: usize = 8 * 1024 * 1024;
-const MAGIC: &str = "MMZIP_SPECIAL_CASES_38A3D812_7C85_4FA4_A7AE_96DF27801C19";
+const MAGIC: &str = "MHX6ZIP_SPECIAL_CASES_38A3D812_7C85_4FA4_A7AE_96DF27801C19";
 const VERSION: u32 = 1;
 
 #[derive(Debug, Serialize, Deserialize)]

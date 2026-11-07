@@ -43,12 +43,13 @@ pub const MAX_ARCHIVE_ENTRIES: usize = 100_000;
 const IO_BUFFER_SIZE: usize = 64 * 1024;
 const SEVENZIP_CHUNK_SIZE: u64 = 16 * 1024 * 1024;
 const SEVENZIP_PARALLEL_THRESHOLD: u64 = 2 * SEVENZIP_CHUNK_SIZE;
-pub use mzip_shell_protocol::SUPPORTED_EXTENSIONS;
+pub use hx6zip_shell_protocol::SUPPORTED_EXTENSIONS;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ArchiveFormat {
     Zip,
     SevenZip,
+    Tar,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -140,8 +141,10 @@ impl ArchiveFormat {
             Ok(Self::Zip)
         } else if extension.eq_ignore_ascii_case("7z") {
             Ok(Self::SevenZip)
+        } else if extension.eq_ignore_ascii_case("tar") {
+            Ok(Self::Tar)
         } else {
-            bail!("暂不支持此格式，请选择 ZIP 或 7z 文件")
+            bail!("暂不支持此格式，请选择 ZIP、7z 或 TAR 文件")
         }
     }
 
@@ -149,6 +152,7 @@ impl ArchiveFormat {
         match self {
             Self::Zip => "zip",
             Self::SevenZip => "7z",
+            Self::Tar => "tar",
         }
     }
 }
