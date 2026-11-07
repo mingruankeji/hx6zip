@@ -2,11 +2,12 @@ use std::{
     cmp::Reverse,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fs::{self, File},
-    io::{self, BufReader, Read, Seek, SeekFrom, Write},
+    io::{self, BufReader, BufWriter, Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        mpsc::{SyncSender, TrySendError, sync_channel},
     },
     time::SystemTime,
 };
@@ -14,7 +15,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use sevenz_rust2::{Archive, ArchiveReader, Block, BlockDecoder, EncoderMethod, Password};
 use tempfile::{NamedTempFile, TempDir, TempPath};
-use zip::ZipArchive;
+use zip::{CompressionMethod, ZipArchive};
 
 use super::{
     ArchiveEntry, ArchiveInfo, ArchiveKind, Cancelled, ExtractOptions, IO_BUFFER_SIZE,
@@ -39,6 +40,9 @@ struct PlannedEntry {
 
 #[derive(Clone)]
 struct SharedCursor {
+    #[cfg(any(windows, unix))]
+    file: Arc<File>,
+    #[cfg(not(any(windows, unix)))]
     file: Arc<Mutex<File>>,
     position: u64,
     length: u64,
@@ -46,14 +50,33 @@ struct SharedCursor {
 
 impl Read for SharedCursor {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        let mut file = self
-            .file
-            .lock()
-            .map_err(|_| io::Error::other("压缩包读取状态异常"))?;
-        // Cloned File handles share a seek position, so keep each cursor independent.
-        file.seek(SeekFrom::Start(self.position))?;
-        let count = file.read(buffer)?;
+        let count = self.read_at(buffer, self.position)?;
         self.position += count as u64;
+        Ok(count)
+    }
+}
+
+impl SharedCursor {
+    fn read_at(&self, buffer: &mut [u8], position: u64) -> io::Result<usize> {
+        #[cfg(windows)]
+        let count = {
+            use std::os::windows::fs::FileExt;
+            self.file.seek_read(buffer, position)?
+        };
+        #[cfg(unix)]
+        let count = {
+            use std::os::unix::fs::FileExt;
+            self.file.read_at(buffer, position)?
+        };
+        #[cfg(not(any(windows, unix)))]
+        let count = {
+            let mut file = self
+                .file
+                .lock()
+                .map_err(|_| io::Error::other("压缩包读取状态异常"))?;
+            file.seek(SeekFrom::Start(position))?;
+            file.read(buffer)?
+        };
         Ok(count)
     }
 }
@@ -77,11 +100,36 @@ impl SharedInput {
         Self(BufReader::with_capacity(
             IO_BUFFER_SIZE,
             SharedCursor {
+                #[cfg(any(windows, unix))]
+                file: Arc::new(file),
+                #[cfg(not(any(windows, unix)))]
                 file: Arc::new(Mutex::new(file)),
                 position: 0,
                 length,
             },
         ))
+    }
+
+    fn read_exact_at(&self, mut position: u64, mut buffer: &mut [u8]) -> io::Result<()> {
+        let cursor = self.0.get_ref();
+        while !buffer.is_empty() {
+            match cursor.read_at(buffer, position) {
+                Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
+                Ok(count) => {
+                    position = position
+                        .checked_add(count as u64)
+                        .ok_or_else(|| io::Error::other("压缩包读取位置溢出"))?;
+                    buffer = &mut buffer[count..];
+                }
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(())
+    }
+
+    fn direct_cursor(&self) -> SharedCursor {
+        self.0.get_ref().clone()
     }
 }
 
@@ -166,7 +214,51 @@ fn extract_archive_with_password(
     options: &ExtractOptions,
     control: &JobControl,
 ) -> Result<()> {
-    extract_archive_without_special(info, options, control)?;
+    extract_archive_with_password_mode(info, options, control, false)
+}
+
+pub(super) fn extract_archive_for_export(
+    info: &ArchiveInfo,
+    options: &ExtractOptions,
+    control: &JobControl,
+) -> Result<()> {
+    control.with_archive_password(
+        &info.path,
+        options.password.as_deref(),
+        info.entries.iter().any(|entry| {
+            entry.is_encrypted == Some(true)
+                && options
+                    .selected
+                    .as_ref()
+                    .is_none_or(|selected| selected.contains(&entry.index))
+        }),
+        control.integrity() == IntegrityMode::Safe,
+        |password| {
+            let options = ExtractOptions {
+                password: password.map(str::to_owned),
+                ..options.clone()
+            };
+            extract_archive_with_password_mode(info, &options, control, true)
+        },
+    )
+}
+
+fn extract_archive_with_password_mode(
+    info: &ArchiveInfo,
+    options: &ExtractOptions,
+    control: &JobControl,
+    isolated_export: bool,
+) -> Result<()> {
+    if isolated_export {
+        control.check_cancelled()?;
+        let plan = plan_entries(info, options.selected.as_ref(), control)?;
+        extract_archive_staged(info, options, &plan, control)?;
+        if control.integrity() == IntegrityMode::Safe {
+            verify_export_entries(&options.destination, &plan, control)?;
+        }
+    } else {
+        extract_archive_without_special(info, options, control)?;
+    }
     let scopes = match &options.selected {
         None => vec![(PathBuf::new(), PathBuf::new())],
         Some(selected) => info
@@ -190,6 +282,22 @@ fn extract_archive_with_password(
                 .is_none_or(|selected| selected.contains(&entry.index))
     });
     restore_special_entries(info, options, &scopes, extracted_manifest, control)
+}
+
+fn verify_export_entries(root: &Path, plan: &[PlannedEntry], control: &JobControl) -> Result<()> {
+    for item in plan {
+        control.check_cancelled()?;
+        let path = root.join(&item.relative);
+        let metadata = checked_metadata(&path)?
+            .with_context(|| format!("解压结果缺少条目：{}", item.entry.name))?;
+        if metadata.is_dir() != item.entry.is_directory
+            || (!item.entry.is_directory
+                && (!metadata.is_file() || metadata.len() != item.entry.size))
+        {
+            bail!("解压结果不完整：{}", item.entry.name);
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn extract_archive_without_special(
@@ -223,7 +331,9 @@ pub(super) fn read_special_manifest(
         entry.size <= special::MAX_MANIFEST_SIZE as u64,
         "特殊情况清单超过 8 MiB"
     );
-    let temporary = tempfile::Builder::new().prefix("hx6zip-special-").tempdir()?;
+    let temporary = tempfile::Builder::new()
+        .prefix("hx6zip-special-")
+        .tempdir()?;
     let relative = safe_relative_path(&entry.name)?;
     extract_archive_staged(
         info,
@@ -547,11 +657,13 @@ pub fn extract_drag_entries(
     control.with_archive_password(
         &info.path,
         password,
-        info.entries.iter().any(|entry| {
-            selected.contains(&entry.index) && entry.is_encrypted == Some(true)
-        }),
+        info.entries
+            .iter()
+            .any(|entry| selected.contains(&entry.index) && entry.is_encrypted == Some(true)),
         control.integrity() == IntegrityMode::Safe,
-        |password| extract_drag_with_password(info, paths, destination, password, overwrite, control),
+        |password| {
+            extract_drag_with_password(info, paths, destination, password, overwrite, control)
+        },
     )
 }
 
@@ -804,12 +916,12 @@ fn extract_archive_staged(
     let metadata = file.metadata().context("无法读取压缩包信息")?;
     match info.format {
         ArchiveKind::Zip => {
-            let mut reader = ZipArchive::new(SharedInput::new(file, metadata.len()))
-                .context("无法读取 ZIP 压缩包")?;
+            let input = SharedInput::new(file, metadata.len());
+            let mut reader = ZipArchive::new(input.clone()).context("无法读取 ZIP 压缩包")?;
             let fresh = inspect_zip(&info.path, &metadata, &mut reader, control)?;
             verify_unchanged(info, &fresh)?;
             let root = prepare_destination(&fresh, options, plan)?;
-            extract_zip(&mut reader, &root, options, plan, control)
+            extract_zip(&mut reader, &input, &root, options, plan, control)
         }
         ArchiveKind::SevenZip => {
             let password = Password::from(options.password.as_deref().unwrap_or_default());
@@ -1102,14 +1214,140 @@ where
     })
 }
 
+const STREAM_WRITE_MAX: u64 = 1024 * 1024;
+
+struct FileWriters<'a> {
+    sender: SyncSender<(PlannedEntry, Vec<u8>)>,
+    failed: &'a AtomicBool,
+    control: &'a JobControl,
+}
+
+struct WriteWorkerStatus<'a> {
+    failed: &'a AtomicBool,
+    succeeded: bool,
+}
+
+impl Drop for WriteWorkerStatus<'_> {
+    fn drop(&mut self) {
+        if !self.succeeded {
+            self.failed.store(true, Ordering::Release);
+        }
+    }
+}
+
+impl FileWriters<'_> {
+    fn submit(&self, item: &PlannedEntry, data: Vec<u8>) -> Result<()> {
+        let mut job = (item.clone(), data);
+        loop {
+            self.control.check_cancelled()?;
+            if self.failed.load(Ordering::Acquire) {
+                bail!("解压写入线程失败");
+            }
+            match self.sender.try_send(job) {
+                Ok(()) => return Ok(()),
+                Err(TrySendError::Full(returned)) => {
+                    job = returned;
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                Err(TrySendError::Disconnected(_)) => bail!("解压写入线程已退出"),
+            }
+        }
+    }
+}
+
+fn with_file_writers(
+    root: &Path,
+    overwrite: bool,
+    control: &JobControl,
+    enabled: bool,
+    decode: impl FnOnce(Option<&FileWriters<'_>>) -> Result<()>,
+) -> Result<()> {
+    let workers = std::thread::available_parallelism()
+        .context("无法获取可用处理器数量")?
+        .get()
+        .min(4);
+    if !enabled || workers < 2 {
+        return decode(None);
+    }
+    // The queue and worker buffers hold at most 12 MiB of decoded file data.
+    let (sender, receiver) = sync_channel::<(PlannedEntry, Vec<u8>)>(workers * 2);
+    let receiver = Mutex::new(receiver);
+    let failed = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for _ in 0..workers {
+            let receiver = &receiver;
+            let failed = &failed;
+            handles.push(
+                std::thread::Builder::new()
+                    .name("hx6zip-extract-write".into())
+                    .spawn_scoped(scope, move || {
+                        let mut status = WriteWorkerStatus {
+                            failed,
+                            succeeded: false,
+                        };
+                        let result = (|| -> Result<()> {
+                            loop {
+                                let job = receiver
+                                    .lock()
+                                    .map_err(|_| anyhow::anyhow!("解压写入队列状态异常"))?
+                                    .recv();
+                                let Ok((item, data)) = job else { break };
+                                if failed.load(Ordering::Acquire) {
+                                    break;
+                                }
+                                write_temporary(root, &item, overwrite, control, |output| {
+                                    copy_stream(
+                                        &mut io::Cursor::new(data),
+                                        output,
+                                        item.entry.size,
+                                        control,
+                                        |_| Ok(()),
+                                    )
+                                })
+                                .with_context(|| format!("无法解压 {}", item.entry.name))?;
+                            }
+                            Ok(())
+                        })();
+                        status.succeeded = result.is_ok();
+                        result
+                    })
+                    .context("无法启动解压写入线程")?,
+            );
+        }
+        let writers = FileWriters {
+            sender,
+            failed: &failed,
+            control,
+        };
+        let decoded = decode(Some(&writers));
+        drop(writers);
+        let mut write_error = None;
+        for handle in handles {
+            let result = handle
+                .join()
+                .unwrap_or_else(|_| Err(anyhow::anyhow!("解压写入线程异常退出")));
+            if write_error.is_none() {
+                write_error = result.err();
+            }
+        }
+        if let Some(error) = write_error {
+            return Err(error);
+        }
+        decoded
+    })
+}
+
 fn extract_zip<R: Read + Seek + Clone + Send>(
     reader: &mut ZipArchive<R>,
+    input: &SharedInput,
     root: &Path,
     options: &ExtractOptions,
     plan: &[PlannedEntry],
     control: &JobControl,
 ) -> Result<()> {
     let mut tracker = Tracker::new(control, "正在解压", total_selected(plan)?);
+    let mut state = ZipExtraction::new(reader.clone(), input.clone());
     let files = plan
         .iter()
         .filter(|item| !item.entry.is_directory)
@@ -1122,27 +1360,27 @@ fn extract_zip<R: Read + Seek + Clone + Send>(
     if workers > 1 {
         prepare_directories(root, plan, control)?;
         parallel_files(
-            reader,
+            &state,
             &files,
             workers,
             control,
             &mut tracker,
-            |reader, item, tracker| {
-                let mut input = match options.password.as_deref().filter(|p| !p.is_empty()) {
-                    Some(password) => {
-                        reader.by_index_decrypt(item.entry.index, password.as_bytes())
-                    }
-                    None => reader.by_index(item.entry.index),
-                }
-                .with_context(|| format!("无法读取 {}，密码可能不正确", item.entry.name))?;
+            |state, item, tracker| {
                 write_temporary(root, item, options.overwrite, control, |output| {
-                    copy_stream(&mut input, output, item.entry.size, control, |bytes| {
-                        tracker
-                            .lock()
-                            .map_err(|_| anyhow::anyhow!("解压进度状态异常"))?
-                            .advance(bytes)
-                    })
-                    .with_context(|| format!("无法解压 {}", item.entry.name))
+                    state
+                        .copy_file(
+                            item,
+                            options.password.as_deref(),
+                            output,
+                            control,
+                            |bytes| {
+                                tracker
+                                    .lock()
+                                    .map_err(|_| anyhow::anyhow!("解压进度状态异常"))?
+                                    .advance(bytes)
+                            },
+                        )
+                        .with_context(|| format!("无法解压 {}", item.entry.name))
                 })
             },
         )?;
@@ -1155,26 +1393,123 @@ fn extract_zip<R: Read + Seek + Clone + Send>(
             ensure_directory(root, &item.relative)?;
             continue;
         }
-        let mut file = match options
-            .password
-            .as_deref()
-            .filter(|value| !value.is_empty())
-        {
-            Some(password) => reader.by_index_decrypt(item.entry.index, password.as_bytes()),
-            None => reader.by_index(item.entry.index),
-        }
-        .with_context(|| format!("无法读取 {}，密码可能不正确", item.entry.name))?;
-        extract_file(
-            &mut file,
-            root,
-            item,
-            options.overwrite,
-            control,
-            &mut tracker,
-        )?;
+        write_temporary(root, item, options.overwrite, control, |output| {
+            state
+                .copy_file(
+                    item,
+                    options.password.as_deref(),
+                    output,
+                    control,
+                    |bytes| tracker.advance(bytes),
+                )
+                .with_context(|| format!("无法解压 {}", item.entry.name))
+        })?;
     }
     restore_directory_times(root, plan, control)?;
     tracker.finish()
+}
+
+struct ZipExtraction<R> {
+    archive: ZipArchive<R>,
+    input: SharedInput,
+    decoder: Option<libdeflater::Decompressor>,
+    compressed: Vec<u8>,
+    decoded: Vec<u8>,
+}
+
+impl<R> ZipExtraction<R> {
+    fn new(archive: ZipArchive<R>, input: SharedInput) -> Self {
+        Self {
+            archive,
+            input,
+            decoder: None,
+            compressed: Vec::new(),
+            decoded: Vec::new(),
+        }
+    }
+}
+
+impl<R: Clone> Clone for ZipExtraction<R> {
+    fn clone(&self) -> Self {
+        Self::new(self.archive.clone(), self.input.clone())
+    }
+}
+
+impl<R: Read + Seek> ZipExtraction<R> {
+    fn copy_file(
+        &mut self,
+        item: &PlannedEntry,
+        password: Option<&str>,
+        output: &mut File,
+        control: &JobControl,
+        advance: impl FnMut(usize) -> Result<()>,
+    ) -> Result<()> {
+        // Bound both buffers: at most 64 MiB per worker, without mapping mutable files.
+        const MAX_BUFFER: u64 = 32 * 1024 * 1024;
+        let data_start = {
+            let metadata = self
+                .archive
+                .file_metadata(item.entry.index)
+                .with_context(|| format!("无法读取 {}", item.entry.name))?;
+            if !metadata.encrypted
+                && metadata.compression_method == CompressionMethod::Deflated
+                && metadata.uncompressed_size <= MAX_BUFFER
+                && metadata.compressed_size <= MAX_BUFFER
+            {
+                let mut cursor = self.input.direct_cursor();
+                Some(
+                    metadata
+                        .data_start(&mut cursor)
+                        .with_context(|| format!("无法读取 ZIP 条目头：{}", item.entry.name))?,
+                )
+            } else {
+                None
+            }
+        };
+        if let Some(data_start) = data_start {
+            let metadata = self.archive.file_metadata(item.entry.index)?;
+            let expected = metadata.uncompressed_size as usize;
+            let compressed_size = metadata.compressed_size;
+            let crc = metadata.crc32;
+            self.compressed.clear();
+            self.compressed.reserve_exact(compressed_size as usize);
+            self.compressed.resize(compressed_size as usize, 0);
+            for (index, chunk) in self.compressed.chunks_mut(1024 * 1024).enumerate() {
+                control.check_cancelled()?;
+                let offset = index as u64 * 1024 * 1024;
+                let position = data_start.checked_add(offset).context("ZIP 条目偏移溢出")?;
+                self.input
+                    .read_exact_at(position, chunk)
+                    .with_context(|| format!("无法读取 {}", item.entry.name))?;
+            }
+            self.decoded
+                .reserve_exact(expected.saturating_sub(self.decoded.len()));
+            self.decoded.resize(expected, 0);
+            control.check_cancelled()?;
+            let size = self
+                .decoder
+                .get_or_insert_with(libdeflater::Decompressor::new)
+                .deflate_decompress(&self.compressed, &mut self.decoded)
+                .context("ZIP 解压数据失败")?;
+            anyhow::ensure!(size == expected, "文件内容大小与预期不符");
+            anyhow::ensure!(crc32fast::hash(&self.decoded) == crc, "ZIP CRC 校验失败");
+            let mut advance = advance;
+            for chunk in self.decoded.chunks(1024 * 1024) {
+                control.check_cancelled()?;
+                output.write_all(chunk).context("写入解压文件失败")?;
+                advance(chunk.len())?;
+            }
+            return Ok(());
+        }
+        let mut input = match password.filter(|p| !p.is_empty()) {
+            Some(password) => self
+                .archive
+                .by_index_decrypt(item.entry.index, password.as_bytes()),
+            None => self.archive.by_index(item.entry.index),
+        }
+        .with_context(|| format!("无法读取 {}，密码可能不正确", item.entry.name))?;
+        copy_stream(&mut input, output, item.entry.size, control, advance)
+    }
 }
 
 fn extract_iso(
@@ -1360,57 +1695,96 @@ fn extract_sevenzip_parallel<R: Read + Seek + Clone + Send>(
         1
     };
     let tracker = Mutex::new(&mut tracker);
-    parallel_jobs(&input, &blocks, workers, control, |source, &block_index| {
-        let threads = if archive.blocks[block_index].get_unpack_size() < SEVENZIP_PARALLEL_THRESHOLD
-        {
-            1
-        } else {
-            decoder_threads
-        };
-        let decoder = BlockDecoder::new(threads, block_index, archive, password, source);
-        let mut file_index = archive.stream_map.block_first_file_index[block_index];
-        let mut inner_error = None;
-        let result = decoder.for_each_entries(&mut |entry, input| {
-            let index = file_index;
-            file_index += 1;
-            let extracted = (|| -> Result<()> {
-                control.check_cancelled()?;
-                if !entry.has_stream {
-                    return Ok(());
-                }
-                if let Some(item) = by_index.get(&index).filter(|item| !item.entry.is_directory) {
-                    tracker
-                        .lock()
-                        .map_err(|_| anyhow::anyhow!("解压进度状态异常"))?
-                        .start_file(&item.entry.name)?;
-                    write_temporary(root, item, options.overwrite, control, |output| {
-                        copy_stream(input, output, item.entry.size, control, |bytes| {
+    with_file_writers(
+        root,
+        options.overwrite,
+        control,
+        workers == 1 && plan.len() >= 16,
+        |writers| {
+            parallel_jobs(&input, &blocks, workers, control, |source, &block_index| {
+                let threads = if archive.blocks[block_index].get_unpack_size()
+                    < SEVENZIP_PARALLEL_THRESHOLD
+                {
+                    1
+                } else {
+                    decoder_threads
+                };
+                let decoder = BlockDecoder::new(threads, block_index, archive, password, source);
+                let mut file_index = archive.stream_map.block_first_file_index[block_index];
+                let mut inner_error = None;
+                let result = decoder.for_each_entries(&mut |entry, input| {
+                    let index = file_index;
+                    file_index += 1;
+                    let extracted = (|| -> Result<()> {
+                        control.check_cancelled()?;
+                        if !entry.has_stream {
+                            return Ok(());
+                        }
+                        if let Some(item) =
+                            by_index.get(&index).filter(|item| !item.entry.is_directory)
+                        {
                             tracker
                                 .lock()
                                 .map_err(|_| anyhow::anyhow!("解压进度状态异常"))?
-                                .advance(bytes)
-                        })
-                        .with_context(|| format!("无法解压 {}", item.entry.name))
-                    })?;
-                } else {
-                    copy_stream(input, &mut io::sink(), entry.size, control, |_| Ok(()))?;
+                                .start_file(&item.entry.name)?;
+                            let mut advance = |bytes| {
+                                tracker
+                                    .lock()
+                                    .map_err(|_| anyhow::anyhow!("解压进度状态异常"))?
+                                    .advance(bytes)
+                            };
+                            if let Some(writers) =
+                                writers.filter(|_| item.entry.size <= STREAM_WRITE_MAX)
+                            {
+                                let mut data = Vec::with_capacity(item.entry.size as usize);
+                                copy_stream(
+                                    input,
+                                    &mut data,
+                                    item.entry.size,
+                                    control,
+                                    &mut advance,
+                                )
+                                .with_context(|| format!("无法解压 {}", item.entry.name))?;
+                                writers.submit(item, data)?;
+                            } else {
+                                write_temporary(
+                                    root,
+                                    item,
+                                    options.overwrite,
+                                    control,
+                                    |output| {
+                                        copy_stream(
+                                            input,
+                                            output,
+                                            item.entry.size,
+                                            control,
+                                            &mut advance,
+                                        )
+                                        .with_context(|| format!("无法解压 {}", item.entry.name))
+                                    },
+                                )?;
+                            }
+                        } else {
+                            copy_stream(input, &mut io::sink(), entry.size, control, |_| Ok(()))?;
+                        }
+                        Ok(())
+                    })();
+                    match extracted {
+                        Ok(()) => Ok(index < last_selected[&block_index]),
+                        Err(error) => {
+                            inner_error = Some(error);
+                            Err(sevenz_rust2::Error::Other("解压失败".into()))
+                        }
+                    }
+                });
+                if let Some(error) = inner_error {
+                    return Err(error);
                 }
+                result.context("解压 7z 失败，密码可能不正确或文件已损坏")?;
                 Ok(())
-            })();
-            match extracted {
-                Ok(()) => Ok(index < last_selected[&block_index]),
-                Err(error) => {
-                    inner_error = Some(error);
-                    Err(sevenz_rust2::Error::Other("解压失败".into()))
-                }
-            }
-        });
-        if let Some(error) = inner_error {
-            return Err(error);
-        }
-        result.context("解压 7z 失败，密码可能不正确或文件已损坏")?;
-        Ok(())
-    })?;
+            })
+        },
+    )?;
     let tracker = tracker
         .into_inner()
         .map_err(|_| anyhow::anyhow!("解压进度状态异常"))?;
@@ -1475,12 +1849,14 @@ fn extract_other(
                         reader.skip()?;
                     } else {
                         write_temporary(root, item, options.overwrite, control, |output| {
+                            let mut output = BufWriter::with_capacity(512 * 1024, output);
                             let mut writer = ProgressWriter {
-                                output,
+                                output: &mut output,
                                 control,
                                 tracker: &mut tracker,
                             };
-                            reader.process(item.entry.size, Some(&mut writer))
+                            reader.process(item.entry.size, Some(&mut writer))?;
+                            writer.flush().context("无法写入 RAR 解压内容")
                         })?;
                     }
                 } else if reader.is_solid() && !entry.is_directory {
@@ -1495,24 +1871,49 @@ fn extract_other(
             }
         }
         ArchiveKind::Tar(compression) => {
+            prepare_directories(root, plan, control)?;
             let by_index: HashMap<_, _> =
                 plan.iter().map(|item| (item.entry.index, item)).collect();
             let mut count = 0usize;
-            read_tar_entries(&mut file, compression, control, |entry, input| {
-                if info.entries.get(entry.index) != Some(entry) {
-                    bail!("压缩包在打开后发生了变化，请重新打开后再解压");
-                }
-                count += 1;
-                if let Some(item) = by_index.get(&entry.index) {
-                    tracker.start_file(&entry.name)?;
-                    if entry.is_directory {
-                        ensure_directory(root, &item.relative)?;
-                    } else {
-                        extract_file(input, root, item, options.overwrite, control, &mut tracker)?;
-                    }
-                }
-                Ok(())
-            })?;
+            with_file_writers(
+                root,
+                options.overwrite,
+                control,
+                plan.len() >= 16,
+                |writers| {
+                    read_tar_entries(&mut file, compression, control, |entry, input| {
+                        if info.entries.get(entry.index) != Some(entry) {
+                            bail!("压缩包在打开后发生了变化，请重新打开后再解压");
+                        }
+                        count += 1;
+                        if let Some(item) = by_index.get(&entry.index) {
+                            tracker.start_file(&entry.name)?;
+                            if entry.is_directory {
+                                ensure_directory(root, &item.relative)?;
+                            } else if let Some(writers) =
+                                writers.filter(|_| item.entry.size <= STREAM_WRITE_MAX)
+                            {
+                                let mut data = Vec::with_capacity(item.entry.size as usize);
+                                copy_stream(input, &mut data, item.entry.size, control, |bytes| {
+                                    tracker.advance(bytes)
+                                })
+                                .with_context(|| format!("无法解压 {}", item.entry.name))?;
+                                writers.submit(item, data)?;
+                            } else {
+                                extract_file(
+                                    input,
+                                    root,
+                                    item,
+                                    options.overwrite,
+                                    control,
+                                    &mut tracker,
+                                )?;
+                            }
+                        }
+                        Ok(())
+                    })
+                },
+            )?;
             if count != info.entries.len() {
                 bail!("压缩包在打开后发生了变化，请重新打开后再解压");
             }
@@ -1539,7 +1940,7 @@ fn extract_other(
 }
 
 struct ProgressWriter<'a, 'b> {
-    output: &'a mut File,
+    output: &'a mut dyn Write,
     control: &'a JobControl,
     tracker: &'a mut Tracker<'b>,
 }
@@ -1589,18 +1990,32 @@ fn write_temporary(
     check_target(root, &item.relative, false, overwrite)?;
     let destination = root.join(&item.relative);
     let mut temporary = NamedTempFile::new_in(&parent).context("无法创建解压临时文件")?;
-    write(temporary.as_file_mut())?;
-    temporary
-        .as_file_mut()
-        .flush()
-        .context("无法写入解压文件")?;
-    set_file_modified(temporary.as_file(), item.entry.modified)?;
-    temporary
-        .as_file()
-        .sync_all()
-        .context("无法保存解压文件数据")?;
-    control.check_cancelled()?;
-    check_target(root, &item.relative, false, overwrite)?;
+    let prepared = (|| -> Result<()> {
+        write(temporary.as_file_mut())?;
+        temporary
+            .as_file_mut()
+            .flush()
+            .context("无法写入解压文件")?;
+        set_file_modified(temporary.as_file(), item.entry.modified)?;
+        if control.integrity() == IntegrityMode::Safe {
+            temporary
+                .as_file()
+                .sync_all()
+                .context("无法保存解压文件数据")?;
+        }
+        control.check_cancelled()?;
+        check_target(root, &item.relative, false, overwrite)?;
+        Ok(())
+    })();
+    if let Err(error) = prepared {
+        // Close before unlinking to avoid Windows delete-pending temporary names.
+        let (file, path) = temporary.into_parts();
+        drop(file);
+        if let Err(cleanup) = path.close() {
+            bail!("解压失败：{error:#}；无法清理解压临时文件：{cleanup}");
+        }
+        return Err(error);
+    }
     persist_temp(temporary, &destination, overwrite)
 }
 
@@ -1656,6 +2071,92 @@ mod tests {
         assert!(cloned.seek(SeekFrom::Current(-1)).is_err());
         cloned.read_exact(&mut byte).unwrap();
         assert_eq!(&byte, b"a");
+    }
+
+    #[test]
+    fn queued_file_write_errors_are_returned_and_temporaries_are_removed() {
+        let temp = TempDir::new().unwrap();
+        let item = PlannedEntry {
+            entry: ArchiveEntry {
+                index: 0,
+                name: "bad.bin".into(),
+                size: 2,
+                compressed_size: None,
+                is_directory: false,
+                is_encrypted: Some(false),
+                unsupported_kind: false,
+                is_symbolic_link: false,
+                modified: None,
+            },
+            relative: PathBuf::from("bad.bin"),
+        };
+        let control = JobControl::default();
+        let error = with_file_writers(temp.path(), false, &control, true, |writers| {
+            if let Some(writers) = writers {
+                for _ in 0..32 {
+                    writers.submit(&item, vec![1])?;
+                }
+                Ok(())
+            } else {
+                write_temporary(temp.path(), &item, false, &control, |output| {
+                    copy_stream(&mut io::Cursor::new([1]), output, 2, &control, |_| Ok(()))
+                })
+            }
+        })
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("大小与预期不符"), "{error:#}");
+        let remaining = fs::read_dir(temp.path())
+            .map(|entries| {
+                entries
+                    .map(|entry| entry.unwrap().path())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap();
+        assert!(remaining.is_empty(), "{remaining:?}");
+    }
+
+    #[test]
+    fn zip_batch_decoder_reuses_bounded_buffers_and_handles_empty_files() {
+        let archive = NamedTempFile::new().unwrap();
+        let mut writer = zip::ZipWriter::new(archive.reopen().unwrap());
+        let sizes = [1, 3 * 1024 * 1024, 5 * 1024 * 1024, 0];
+        for (index, size) in sizes.into_iter().enumerate() {
+            writer
+                .start_file(
+                    format!("{index}.bin"),
+                    zip::write::SimpleFileOptions::default()
+                        .compression_method(CompressionMethod::Deflated),
+                )
+                .unwrap();
+            writer.write_all(&vec![index as u8; size]).unwrap();
+        }
+        writer.finish().unwrap();
+        let control = JobControl::default();
+        let info = crate::archive::inspect_archive(archive.path(), None, &control).unwrap();
+        let plan = plan_entries(&info, None, &control).unwrap();
+        let input = SharedInput::new(
+            archive.reopen().unwrap(),
+            archive.as_file().metadata().unwrap().len(),
+        );
+        let mut state = ZipExtraction::new(ZipArchive::new(input.clone()).unwrap(), input);
+        for (index, item) in plan.iter().enumerate() {
+            let mut output = NamedTempFile::new().unwrap();
+            let mut completed = 0;
+            state
+                .copy_file(item, None, output.as_file_mut(), &control, |count| {
+                    completed += count;
+                    Ok(())
+                })
+                .unwrap();
+            assert_eq!(completed, sizes[index]);
+            assert_eq!(
+                fs::read(output.path()).unwrap(),
+                vec![index as u8; sizes[index]]
+            );
+            assert!(state.decoder.is_some());
+            assert!(state.compressed.capacity() <= 16 * 1024 * 1024);
+            assert!(state.decoded.capacity() <= 16 * 1024 * 1024);
+        }
     }
 
     fn sevenzip_sample(temp: &TempDir, password: Option<&str>, stored: bool) -> PathBuf {

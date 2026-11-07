@@ -1319,6 +1319,7 @@ const ACKNOWLEDGED_LIBRARIES: &[(&str, &str)] = &[
     ("cab", "CAB 读取"),
     ("tar", "TAR 读写"),
     ("flate2 / zlib-rs", "Deflate、GZip"),
+    ("libdeflater / libdeflate", "ZIP 批量 Deflate 压缩与解压"),
     ("bzip2", "BZip2"),
     ("lzma-rust2", "LZMA、XZ"),
     ("zstd", "Zstandard"),

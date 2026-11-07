@@ -362,22 +362,34 @@ pub(super) fn copy_stream(
     control: &JobControl,
     mut advance: impl FnMut(usize) -> Result<()>,
 ) -> Result<()> {
-    let mut buffer = [0u8; 64 * 1024];
+    let mut buffer = vec![0u8; expected.clamp(1, 512 * 1024) as usize];
     let mut copied = 0u64;
     loop {
         control.check_cancelled()?;
-        let count = reader.read(&mut buffer).context("读取文件内容失败")?;
-        if count == 0 {
+        let mut filled = 0;
+        while filled < buffer.len() {
+            control.check_cancelled()?;
+            let count = match reader.read(&mut buffer[filled..]) {
+                Ok(0) => break,
+                Ok(count) => count,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(error).context("读取文件内容失败"),
+            };
+            copied = copied.checked_add(count as u64).context("文件大小溢出")?;
+            if copied > expected {
+                bail!("文件内容超过声明大小，已停止处理");
+            }
+            filled += count;
+        }
+        if filled > 0 {
+            writer
+                .write_all(&buffer[..filled])
+                .context("写入文件内容失败")?;
+            advance(filled)?;
+        }
+        if filled < buffer.len() {
             break;
         }
-        copied = copied.checked_add(count as u64).context("文件大小溢出")?;
-        if copied > expected {
-            bail!("文件内容超过声明大小，已停止处理");
-        }
-        writer
-            .write_all(&buffer[..count])
-            .context("写入文件内容失败")?;
-        advance(count)?;
     }
     if copied != expected {
         bail!("文件内容大小与预期不符");
@@ -398,6 +410,7 @@ impl<F: FnMut(usize) -> Result<()>> Read for TrackingReader<'_, F> {
         if self.control.cancellation.is_cancelled() {
             return Err(io::Error::other("操作已取消"));
         }
+
         let count = self.file.read(buffer)?;
         self.read = self
             .read
@@ -408,5 +421,86 @@ impl<F: FnMut(usize) -> Result<()>> Read for TrackingReader<'_, F> {
         }
         (self.advance)(count).map_err(|error| io::Error::other(error.to_string()))?;
         Ok(count)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::archive::CancellationToken;
+
+    struct ShortReads {
+        remaining: usize,
+        interrupted: bool,
+    }
+
+    impl Read for ShortReads {
+        fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+            if !self.interrupted {
+                self.interrupted = true;
+                return Err(io::ErrorKind::Interrupted.into());
+            }
+            let count = self.remaining.min(buffer.len()).min(127);
+            buffer[..count].fill(42);
+            self.remaining -= count;
+            Ok(count)
+        }
+    }
+
+    #[test]
+    fn copy_stream_coalesces_short_reads_and_retries_interruptions() {
+        let size = 1024 * 1024 + 17;
+        let mut reader = ShortReads {
+            remaining: size,
+            interrupted: false,
+        };
+        let mut output = Vec::new();
+        let mut writes = Vec::new();
+        copy_stream(
+            &mut reader,
+            &mut output,
+            size as u64,
+            &JobControl::default(),
+            |count| {
+                writes.push(count);
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(output, vec![42; size]);
+        assert_eq!(writes, vec![512 * 1024, 512 * 1024, 17]);
+    }
+
+    #[test]
+    fn copy_stream_rejects_size_mismatches_and_honors_cancellation() {
+        for (actual, expected) in [(100, 99), (99, 100), (1, 0)] {
+            let mut reader = ShortReads {
+                remaining: actual,
+                interrupted: false,
+            };
+            assert!(
+                copy_stream(
+                    &mut reader,
+                    &mut Vec::new(),
+                    expected,
+                    &JobControl::default(),
+                    |_| Ok(())
+                )
+                .is_err()
+            );
+        }
+        let token = CancellationToken::default();
+        let control = JobControl::new(token.clone(), |_| {});
+        let mut reader = ShortReads {
+            remaining: 1024 * 1024,
+            interrupted: false,
+        };
+        let error = copy_stream(&mut reader, &mut Vec::new(), 1024 * 1024, &control, |_| {
+            token.cancel();
+            Ok(())
+        })
+        .unwrap_err();
+        assert!(error.downcast_ref::<crate::archive::Cancelled>().is_some());
+        assert_eq!(reader.remaining, 512 * 1024);
     }
 }

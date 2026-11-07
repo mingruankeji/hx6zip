@@ -593,7 +593,10 @@ fn body_type_auth_and_settings_tabs_persist_request_options(cx: &mut TestAppCont
         window.click("setting-verify-tls", cx);
     });
     let saved = fixture.store.load().unwrap().0.remove(0);
-    assert_eq!(saved.body_type, hx6zip::api_client::BodyType::FormUrlEncoded);
+    assert_eq!(
+        saved.body_type,
+        hx6zip::api_client::BodyType::FormUrlEncoded
+    );
     assert_eq!(saved.auth.auth_type, hx6zip::api_client::AuthType::Bearer);
     assert_eq!(saved.auth.token, "secret");
     assert_eq!(saved.settings.timeout_ms, 5000);

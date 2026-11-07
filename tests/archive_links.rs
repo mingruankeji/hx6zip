@@ -590,9 +590,12 @@ fn linked_source_excludes_destination_and_work_directory() {
                 .iter()
                 .any(|entry| entry.name == "source/linked/file.txt")
         );
-        assert!(info.entries.iter().all(
-            |entry| !entry.name.contains(".hx6zip-") && !entry.name.ends_with(format.extension())
-        ));
+        assert!(
+            info.entries
+                .iter()
+                .all(|entry| !entry.name.contains(".hx6zip-")
+                    && !entry.name.ends_with(format.extension()))
+        );
     }
 }
 

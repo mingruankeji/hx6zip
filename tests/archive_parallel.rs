@@ -12,8 +12,8 @@ use std::{
 };
 
 use hx6zip::archive::{
-    ArchiveFormat, CancellationToken, Cancelled, CreateOptions, ExtractOptions, JobControl,
-    create_archive, extract_archive, inspect_archive,
+    ArchiveFormat, CancellationToken, Cancelled, CreateOptions, ExtractOptions, IntegrityMode,
+    JobControl, create_archive, extract_archive, inspect_archive,
 };
 use sevenz_rust2::{ArchiveReader, EncoderMethod, Password};
 use tempfile::TempDir;
@@ -22,6 +22,107 @@ mod support;
 
 const PARALLEL_FILE_SIZE: usize = 1024 * 1024;
 const LARGE_SEVENZIP_SIZE: u64 = 32 * 1024 * 1024;
+
+#[test]
+fn sequential_archive_write_queue_preserves_files_and_rolls_back_on_cancellation() {
+    for (format, password) in [
+        (ArchiveFormat::SevenZip, None),
+        (ArchiveFormat::SevenZip, Some("queue-password")),
+        (ArchiveFormat::Tar, None),
+    ] {
+        let temp = TempDir::new().unwrap();
+        let source = temp.path().join("tree");
+        fs::create_dir_all(source.join("nested")).unwrap();
+        for index in 0..64 {
+            fs::write(
+                source.join("nested").join(format!("{index:03}.txt")),
+                vec![index as u8; 4096],
+            )
+            .unwrap();
+        }
+        fs::write(source.join("large.bin"), vec![99; 2 * 1024 * 1024]).unwrap();
+        fs::write(source.join("empty.txt"), []).unwrap();
+        let archive = temp.path().join(format!("queue.{}", format.extension()));
+        create_archive(
+            &CreateOptions {
+                sources: vec![source],
+                destination: archive.clone(),
+                format,
+                password: password.map(str::to_owned),
+                overwrite: false,
+            },
+            &JobControl::default(),
+        )
+        .unwrap();
+        let info = inspect_archive(&archive, password, &JobControl::default()).unwrap();
+        for mode in [IntegrityMode::Safe, IntegrityMode::Normal] {
+            let output = temp.path().join(mode.label());
+            let options = ExtractOptions {
+                destination: output.clone(),
+                password: password.map(str::to_owned),
+                selected: None,
+                overwrite: false,
+            };
+            let latest = Arc::new(Mutex::new(None));
+            let captured = latest.clone();
+            let control = JobControl::new(CancellationToken::default(), move |progress| {
+                if progress.operation == "正在解压" {
+                    *captured.lock().unwrap() = Some(progress);
+                }
+            })
+            .with_integrity(mode);
+            extract_archive(&info, &options, &control).unwrap();
+            for index in 0..64 {
+                assert_eq!(
+                    fs::read(
+                        output
+                            .join("tree")
+                            .join("nested")
+                            .join(format!("{index:03}.txt"))
+                    )
+                    .unwrap(),
+                    vec![index as u8; 4096]
+                );
+            }
+            assert_eq!(
+                fs::read(output.join("tree").join("large.bin")).unwrap(),
+                vec![99; 2 * 1024 * 1024]
+            );
+            assert_eq!(
+                fs::metadata(output.join("tree").join("empty.txt"))
+                    .unwrap()
+                    .len(),
+                0
+            );
+            let progress = latest.lock().unwrap().clone().unwrap();
+            assert_eq!(progress.completed_bytes, progress.total_bytes);
+        }
+        let destination = temp.path().join("cancelled");
+        fs::create_dir(&destination).unwrap();
+        fs::write(destination.join("keep.txt"), b"keep").unwrap();
+        let token = CancellationToken::default();
+        let triggered = token.clone();
+        let control = JobControl::new(token, move |progress| {
+            if progress.operation == "正在解压" && progress.current_file.ends_with("016.txt") {
+                triggered.cancel();
+            }
+        });
+        let error = extract_archive(
+            &info,
+            &ExtractOptions {
+                destination: destination.clone(),
+                password: password.map(str::to_owned),
+                selected: None,
+                overwrite: false,
+            },
+            &control,
+        )
+        .unwrap_err();
+        assert!(error.downcast_ref::<Cancelled>().is_some(), "{error:#}");
+        assert_eq!(fs::read_dir(&destination).unwrap().count(), 1);
+        assert_eq!(fs::read(destination.join("keep.txt")).unwrap(), b"keep");
+    }
+}
 
 fn parallel_sources(root: &Path) -> Vec<PathBuf> {
     (0..4)

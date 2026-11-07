@@ -208,8 +208,9 @@ fn separate_zip_delegate_accepts_a_complete_shell_selection() {
     );
     let deadline = Instant::now() + Duration::from_secs(15);
     let command: IExecuteCommand = loop {
-        let result =
-            unsafe { CoCreateInstance(&hx6zip::shell::EACH_ZIP_COMMAND, None, CLSCTX_LOCAL_SERVER) };
+        let result = unsafe {
+            CoCreateInstance(&hx6zip::shell::EACH_ZIP_COMMAND, None, CLSCTX_LOCAL_SERVER)
+        };
         match result {
             Ok(command) => break command,
             Err(error) => {

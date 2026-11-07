@@ -17,7 +17,8 @@ use super::{
         is_link_or_reparse, safe_relative_path, scan_source_metadata, source_walk_path,
     },
     create::create_updated_archive,
-    extract_archive, inspect_archive,
+    extract::extract_archive_for_export,
+    inspect_archive,
     special::{self, SpecialEntry},
     timestamps::{set_directory_modified, set_file_modified},
 };
@@ -360,7 +361,9 @@ pub fn edit_archive(
     control.with_archive_password(
         &info.path,
         password,
-        info.entries.iter().any(|entry| entry.is_encrypted == Some(true)),
+        info.entries
+            .iter()
+            .any(|entry| entry.is_encrypted == Some(true)),
         true,
         |password| edit_archive_with_password(info, edit, password, control),
     )
@@ -699,8 +702,10 @@ pub fn export_entries(
     control: &JobControl,
 ) -> Result<ExportedEntries> {
     let selected = archive_selection(info, paths)?;
-    let directory = tempfile::Builder::new().prefix("hx6zip-export-").tempdir()?;
-    extract_archive(
+    let directory = tempfile::Builder::new()
+        .prefix("hx6zip-export-")
+        .tempdir()?;
+    extract_archive_for_export(
         info,
         &ExtractOptions {
             destination: directory.path().to_path_buf(),

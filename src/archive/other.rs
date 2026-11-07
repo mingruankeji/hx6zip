@@ -315,7 +315,10 @@ mod tests {
 
     impl Read for VirtualInput {
         fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-            let count = self.length.saturating_sub(self.position).min(buffer.len() as u64) as usize;
+            let count = self
+                .length
+                .saturating_sub(self.position)
+                .min(buffer.len() as u64) as usize;
             buffer[..count].fill(0);
             if self.position < self.prefix.len() as u64 {
                 let start = self.position as usize;
@@ -356,7 +359,10 @@ mod tests {
             position: 0,
             length: LARGE_SIZE,
         };
-        assert_eq!(stream_size(input, &JobControl::default()).unwrap(), LARGE_SIZE);
+        assert_eq!(
+            stream_size(input, &JobControl::default()).unwrap(),
+            LARGE_SIZE
+        );
     }
 
     #[test]

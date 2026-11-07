@@ -3386,6 +3386,62 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
+name = "hx6zip"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "brotli",
+ "bzip2",
+ "cab",
+ "chrono",
+ "crc32fast",
+ "directories",
+ "embed-resource",
+ "flate2",
+ "gpui-kit",
+ "gpui-pre",
+ "hx6zip-shell-protocol",
+ "iso9660-forensic-core",
+ "libdeflater",
+ "lzma-rust2 0.23.0",
+ "raw-window-handle",
+ "reqwest",
+ "rfd",
+ "serde",
+ "serde_json",
+ "sevenz-rust2",
+ "tar",
+ "tempfile",
+ "unrar-ng-sys",
+ "url",
+ "walkdir",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
+ "zip",
+ "zstd",
+]
+
+[[package]]
+name = "hx6zip-shell-extension"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "hx6zip-shell-protocol",
+ "tempfile",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
+]
+
+[[package]]
+name = "hx6zip-shell-protocol"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "windows 0.61.3",
+]
+
+[[package]]
 name = "hybrid-array"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3941,6 +3997,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
+name = "libdeflate-sys"
+version = "1.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7870e5fbd2766179a937c725fb11f4ca0ef025d982beb61bd3ce755425bd19c"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "libdeflater"
+version = "1.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cbb8285d2e2bd4b8d4155840ae81929354b4ba0d7b3c272c84761ffa2141e1f"
+dependencies = [
+ "libdeflate-sys",
+]
+
+[[package]]
 name = "libfuzzer-sys"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4324,61 +4398,6 @@ name = "multiversion_no_op"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
-
-[[package]]
-name = "hx6zip"
-version = "0.1.2"
-dependencies = [
- "anyhow",
- "async-channel",
- "brotli",
- "bzip2",
- "cab",
- "chrono",
- "crc32fast",
- "directories",
- "embed-resource",
- "flate2",
- "gpui-kit",
- "gpui-pre",
- "iso9660-forensic-core",
- "lzma-rust2 0.23.0",
- "hx6zip-shell-protocol",
- "raw-window-handle",
- "reqwest",
- "rfd",
- "serde",
- "serde_json",
- "sevenz-rust2",
- "tar",
- "tempfile",
- "unrar-ng-sys",
- "url",
- "walkdir",
- "windows 0.61.3",
- "windows-core 0.61.2",
- "zip",
- "zstd",
-]
-
-[[package]]
-name = "hx6zip-shell-extension"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "hx6zip-shell-protocol",
- "tempfile",
- "windows 0.61.3",
- "windows-core 0.61.2",
-]
-
-[[package]]
-name = "hx6zip-shell-protocol"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "windows 0.61.3",
-]
 
 [[package]]
 name = "naga"

@@ -750,7 +750,7 @@ fn write_zip(
         write_zip_parallel(&mut writer, &shared, workers)?;
     } else {
         for source in sources {
-            write_zip_source(&mut writer, source, password, control, &tracker)?;
+            write_zip_source(&mut writer, source, password, &spool_dir, control, &tracker)?;
         }
     }
     control.check_cancelled()?;
@@ -855,10 +855,31 @@ fn write_zip_source<W: Write + Seek>(
     writer: &mut ZipWriter<W>,
     source: &Source,
     password: Option<&str>,
+    spool_dir: &Path,
     control: &JobControl,
     tracker: &Mutex<&mut Tracker<'_>>,
 ) -> Result<()> {
     start_source(source, tracker)?;
+    if !source.is_directory
+        && password.is_none()
+        && (64 * 1024..ZIP_CHUNKED_MIN_FILE_SIZE).contains(&source.size)
+    {
+        let mut input = File::open(&source.path)
+            .with_context(|| format!("无法打开源文件 {}", source.path.display()))?;
+        let mut data = Vec::with_capacity(source.size as usize);
+        copy_stream(&mut input, &mut data, source.size, control, |bytes| {
+            advance_tracker(tracker, bytes)
+        })?;
+        let compressed = libdeflate_buffer(&data)?;
+        control.check_cancelled()?;
+        let mut crc = crc32fast::Hasher::new();
+        crc.update(&data);
+        let mut entry = ChunkedZipEntry::new(source, spool_dir)?;
+        entry.push(&compressed, &crc)?;
+        let archive = entry.finish(source.size)?;
+        writer.merge_archive(archive).context("无法合并 ZIP 条目")?;
+        return validate_source(source);
+    }
     let base = zip_file_options(source)?;
     if source.is_directory {
         writer
@@ -1164,6 +1185,7 @@ fn run_zip_task(task: &ZipTask, shared: &ZipShared<'_, '_, '_>) -> Result<ZipTas
                     &mut writer,
                     source,
                     shared.password,
+                    shared.spool_dir,
                     shared.control,
                     shared.tracker,
                 )?;
@@ -1219,6 +1241,9 @@ fn compress_zip_chunk(
 fn deflate_chunk(input: &[u8], last: bool) -> Result<Vec<u8>> {
     use flate2::{Compress, Compression, FlushCompress, Status};
 
+    if last {
+        return libdeflate_buffer(input);
+    }
     let mut compressor = Compress::new(Compression::new(ZIP_DEFLATE_LEVEL), false);
     let flush = if last {
         FlushCompress::Finish
@@ -1244,6 +1269,19 @@ fn deflate_chunk(input: &[u8], last: bool) -> Result<Vec<u8>> {
             output.reserve(64 * 1024);
         }
     }
+}
+
+fn libdeflate_buffer(input: &[u8]) -> Result<Vec<u8>> {
+    let mut compressor = libdeflater::Compressor::new(
+        libdeflater::CompressionLvl::new(ZIP_DEFLATE_LEVEL as i32)
+            .map_err(|error| anyhow::anyhow!("无效的 ZIP 压缩级别：{error:?}"))?,
+    );
+    let mut output = vec![0; compressor.deflate_compress_bound(input.len())];
+    let size = compressor
+        .deflate_compress(input, &mut output)
+        .context("ZIP 压缩数据失败")?;
+    output.truncate(size);
+    Ok(output)
 }
 
 /// Builds a one-entry archive from a header produced by `ZipWriter` and precompressed data.

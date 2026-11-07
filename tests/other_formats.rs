@@ -31,6 +31,77 @@ fn tar_sample() -> Vec<u8> {
     builder.into_inner().unwrap()
 }
 
+#[test]
+fn compressed_tar_write_queues_preserve_selected_implicit_directories() {
+    let mut builder = tar::Builder::new(Vec::new());
+    for index in 0..32 {
+        let contents = vec![index as u8; 4096];
+        let mut header = tar::Header::new_gnu();
+        header.set_size(contents.len() as u64);
+        header.set_mode(0o644);
+        header.set_mtime(1_600_000_000);
+        header.set_cksum();
+        builder
+            .append_data(
+                &mut header,
+                format!("implicit/nested/{index:03}.bin"),
+                contents.as_slice(),
+            )
+            .unwrap();
+    }
+    let contents = builder.into_inner().unwrap();
+    let temp = TempDir::new().unwrap();
+    for (suffix, compression) in [
+        ("tar", Compression::None),
+        ("tar.gz", Compression::Gzip),
+        ("tar.bz2", Compression::Bzip2),
+        ("tar.xz", Compression::Xz),
+        ("tar.zst", Compression::Zstd),
+        ("tar.br", Compression::Brotli),
+    ] {
+        let archive = temp.path().join(format!("queue.{suffix}"));
+        fs::write(&archive, compress(&contents, compression)).unwrap();
+        let info = inspect_archive(&archive, None, &JobControl::default()).unwrap();
+        let selected = (0..24).collect::<BTreeSet<_>>();
+        for mode in [
+            hx6zip::archive::IntegrityMode::Safe,
+            hx6zip::archive::IntegrityMode::Normal,
+        ] {
+            let destination = temp.path().join(format!("{suffix}-{}", mode.label()));
+            extract_archive(
+                &info,
+                &ExtractOptions {
+                    destination: destination.clone(),
+                    password: None,
+                    selected: Some(selected.clone()),
+                    overwrite: false,
+                },
+                &JobControl::default().with_integrity(mode),
+            )
+            .unwrap();
+            for index in 0..24 {
+                assert_eq!(
+                    fs::read(
+                        destination
+                            .join("implicit")
+                            .join("nested")
+                            .join(format!("{index:03}.bin"))
+                    )
+                    .unwrap(),
+                    vec![index as u8; 4096]
+                );
+            }
+            assert!(
+                !destination
+                    .join("implicit")
+                    .join("nested")
+                    .join("024.bin")
+                    .exists()
+            );
+        }
+    }
+}
+
 fn compress(contents: &[u8], compression: Compression) -> Vec<u8> {
     match compression {
         Compression::None => contents.to_vec(),
