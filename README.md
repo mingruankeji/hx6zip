@@ -2,7 +2,9 @@
 
 **中文** | [English](#english)
 
-Hx6Zip 是一款适用于 Windows 的桌面压缩软件，提供文件浏览、压缩包管理、Windows 资源管理器右键菜单和拖放操作。
+Hx6Zip 是一款面向开发者的 Windows 桌面压缩软件。核心压缩与解压逻辑使用 Rust 实现，界面基于 GPUI Kit；无需安装 7-Zip，也不依赖 7-Zip 动态库或外部 `7z.exe`。
+
+它特别适合日常处理代码仓库和项目目录：压缩时可排除缓存、前端依赖、版本控制目录及占用中的文件；从压缩包拖出文件时，优先直接解压到目标位置，减少临时文件和重复复制的等待。并行处理与小文件优化也让常见项目归档更高效。性能取决于压缩格式、文件特征和硬件，不同场景的表现会有差异。
 
 ## 下载
 
@@ -15,12 +17,15 @@ Hx6Zip 是一款适用于 Windows 的桌面压缩软件，提供文件浏览、�
 
 ## 主要功能
 
+- **Rust 驱动，轻量独立**：桌面界面使用 GPUI Kit；支持多种常见归档格式，不需要系统安装 7-Zip 或调用其动态库。
+- **为开发工作流优化**：创建归档时可按需排除常见缓存目录、`node_modules`、`.git` / `.svn` 版本控制目录，以及因文件共享冲突而无法读取的文件，避免无关文件拖慢项目打包。
+- **快速拖出压缩包**：将选中的文件或文件夹拖到资源管理器，优先由 Hx6Zip 直接解压到目标位置，避免先完整解压到临时目录再复制；固实压缩格式和特殊目标可能需要更多处理。
+- **链接不再悄悄丢失**：扫描到可记录的失效链接等特殊情况时，会在归档中保留说明清单；解压时可按清单尝试恢复受支持的链接，降低项目目录因链接无法还原而缺文件的风险。
 - 浏览文件夹和压缩包；创建 ZIP、7z、TAR，查看、解压 ZIP、7z、RAR、CAB、ISO、TAR 及常见压缩流格式。
 - 修改 ZIP 和 7z，支持添加、替换和删除内容；可处理加密 ZIP、7z 和 RAR。
 - 在压缩包与文件夹之间拖放文件；支持选择性解压、Windows 右键快速压缩和解压。
 - 分割文件并合并连续分片。
 - 后台运行压缩任务，显示进度和速度，支持暂停与取消。
-- 可选择忽略常见缓存目录、`node_modules`、版本控制目录或被占用的文件；必要时在压缩包中生成说明报告。
 - 提供高速和安全两种完整性模式。安全模式会在发布压缩结果前进行额外校验，并在受支持的失败或取消场景下回滚文件操作。
 - 内置 HTTP API 测试工具。
 
@@ -56,7 +61,9 @@ wix extension add WixToolset.UI.wixext/6.0.2
 
 ## English
 
-Hx6Zip is a desktop archive manager for Windows. It combines file browsing with archive management, drag-and-drop operations, and Windows Explorer context-menu integration.
+Hx6Zip is a Windows desktop archive manager built for developers. Its core archive logic is written in Rust, and its UI uses GPUI Kit. It does not require 7-Zip to be installed and does not rely on 7-Zip DLLs or an external `7z.exe`.
+
+Hx6Zip is designed for everyday project archives: optionally skip caches, frontend dependencies, version-control directories, and files locked by other processes. When dragging entries out of an archive, Hx6Zip can extract them directly to the target, reducing temporary-file and copy overhead. Parallel processing and small-file optimizations help keep common archive tasks responsive. Actual performance varies with archive format, data, and hardware.
 
 ### Download
 
@@ -69,12 +76,16 @@ The installer integrates with Explorer. The current MSI uses a development certi
 
 ### Features
 
+- **Developer-friendly filtering:** Optionally exclude common caches, `node_modules`, `.git` / `.svn` directories, and files that cannot be read because they are in use.
+- **Fast drag-out:** Selected entries can be extracted directly to the drop target instead of being fully unpacked to a temporary directory and copied again. Solid archives and some targets may require additional work.
+- **Link-aware archives:** When supported broken links are encountered, Hx6Zip can record them in an archive manifest and attempt to restore supported links during extraction, helping avoid missing project files.
+- **Rust-based and independent:** The UI uses GPUI Kit, and archive operations do not require an installed 7-Zip application, its DLLs, or an external `7z.exe`.
+- **Performance-focused:** Parallel processing and small-file optimizations improve common project-archive workflows. Results depend on the format, data, and hardware; no single speed claim applies to every workload.
 - Browse files and archives; create ZIP, 7z, and TAR archives; open and extract ZIP, 7z, RAR, CAB, ISO, TAR, and common compressed-stream formats.
 - Add, replace, and delete entries in ZIP and 7z archives. Encrypted ZIP, 7z, and RAR archives are supported.
 - Drag and drop files between archives and folders, selectively extract entries, and use Explorer context-menu actions for quick compression and extraction.
 - Split files and join numbered parts.
 - Run background jobs with progress reporting, pause, and cancellation.
-- Optionally skip common caches, `node_modules`, version-control directories, or locked files when creating archives.
 - Choose between high-speed and safe integrity modes. Safe mode performs additional verification and rolls back supported file operations on failure or cancellation.
 - Use the built-in HTTP API testing tool.
 
