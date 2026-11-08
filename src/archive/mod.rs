@@ -2,6 +2,7 @@ mod common;
 mod create;
 mod edit;
 mod extract;
+mod ignored;
 mod inspect;
 mod iso;
 mod other;
@@ -299,8 +300,17 @@ pub struct JobControl {
     cancellation: CancellationToken,
     progress: Arc<dyn Fn(Progress) + Send + Sync>,
     integrity: IntegrityMode,
+    source_filters: SourceFilters,
     warnings: Arc<Mutex<Vec<String>>>,
     password_prompt: Option<PasswordPrompt>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct SourceFilters {
+    pub ignore_common_cache_dirs: bool,
+    pub ignore_frontend_dependencies: bool,
+    pub ignore_version_control_dirs: bool,
+    pub ignore_locked_files: bool,
 }
 
 impl Default for JobControl {
@@ -318,6 +328,7 @@ impl JobControl {
             cancellation,
             progress: Arc::new(progress),
             integrity: IntegrityMode::default(),
+            source_filters: SourceFilters::default(),
             warnings: Arc::new(Mutex::new(Vec::new())),
             password_prompt: None,
         }
@@ -328,6 +339,11 @@ impl JobControl {
         self
     }
 
+    pub fn with_source_filters(mut self, source_filters: SourceFilters) -> Self {
+        self.source_filters = source_filters;
+        self
+    }
+
     fn with_shared_warnings(mut self, parent: &Self) -> Self {
         self.warnings = parent.warnings.clone();
         self
@@ -335,6 +351,10 @@ impl JobControl {
 
     pub fn integrity(&self) -> IntegrityMode {
         self.integrity
+    }
+
+    pub fn source_filters(&self) -> SourceFilters {
+        self.source_filters
     }
 
     pub fn warnings(&self) -> Vec<String> {

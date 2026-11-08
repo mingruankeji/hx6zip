@@ -25,8 +25,10 @@ use super::{
     JobControl,
     common::{
         Tracker, TrackingReader, checked_metadata, collision_key, copy_stream,
-        followed_source_metadata, is_link_or_reparse, persist_temp, safe_relative_path,
+        followed_source_metadata, is_link_or_reparse, is_locked_file_error, persist_temp,
+        safe_relative_path,
     },
+    ignored::{self, REPORT_NAME, Record, RecordKind},
     special::{self, MANIFEST_NAME, Manifest, SpecialEntry},
     timestamps::write_zip_times,
 };
@@ -99,7 +101,8 @@ pub fn create_archives_separately(
             );
             parent_control.report(progress);
         })
-        .with_integrity(integrity);
+        .with_integrity(integrity)
+        .with_source_filters(control.source_filters());
         // Per-item progress has its own control, but warnings belong to the batch.
         let item_control = item_control.with_shared_warnings(control);
         let output = create_archive_auto(vec![source.clone()], ArchiveFormat::Zip, &item_control)
@@ -208,7 +211,7 @@ fn create_archive_impl(
         .prefix(".hx6zip-")
         .tempdir_in(&parent)
         .context("无法在目标文件夹中创建临时压缩包")?;
-    let (mut sources, special_entries) =
+    let (mut sources, special_entries, ignored_records) =
         collect_sources(&options.sources, &destination, work.path(), control)?;
     let ordinary_source_count = sources.len();
     if !special_entries.is_empty() {
@@ -228,6 +231,34 @@ fn create_archive_impl(
         sources.push(Source {
             path: manifest_path,
             name: MANIFEST_NAME.to_owned(),
+            size: metadata.len(),
+            is_directory: false,
+            metadata,
+        });
+    }
+    if !ignored_records.is_empty() {
+        let reserved = REPORT_NAME.to_ascii_lowercase();
+        if sources
+            .iter()
+            .any(|source| source.name.to_lowercase() == reserved)
+            || special_entries
+                .iter()
+                .any(|entry| entry.path.to_lowercase() == reserved)
+            || ignored_records.iter().any(|entry| {
+                entry
+                    .name
+                    .as_ref()
+                    .is_some_and(|name| name.to_lowercase() == reserved)
+            })
+        {
+            bail!("源项目与忽略项记录的保留名称冲突：{REPORT_NAME}");
+        }
+        let report_path = work.path().join(REPORT_NAME);
+        ignored::write(&report_path, &ignored_records)?;
+        let metadata = fs::metadata(&report_path).context("无法读取生成的忽略项记录")?;
+        sources.push(Source {
+            path: report_path,
+            name: REPORT_NAME.to_owned(),
             size: metadata.len(),
             is_directory: false,
             metadata,
@@ -255,7 +286,7 @@ fn create_archive_impl(
         .context("无法保存压缩包数据")?;
     if control.integrity() == IntegrityMode::Safe {
         verify_created_archive(&temporary, &sources, options, control)?;
-        let (fresh, fresh_special) =
+        let (fresh, fresh_special, fresh_ignored) =
             collect_sources(&options.sources, &destination, work.path(), control)?;
         let original_names = sources[..ordinary_source_count]
             .iter()
@@ -265,7 +296,10 @@ fn create_archive_impl(
             .iter()
             .map(|source| &source.name)
             .collect::<HashSet<_>>();
-        if original_names != fresh_names || special_entries != fresh_special {
+        if original_names != fresh_names
+            || special_entries != fresh_special
+            || ignored_records != fresh_ignored
+        {
             bail!("源文件列表在压缩过程中发生了变化，未生成压缩包");
         }
     }
@@ -484,10 +518,12 @@ fn collect_sources(
     destination: &Path,
     work: &Path,
     control: &JobControl,
-) -> Result<(Vec<Source>, Vec<SpecialEntry>)> {
+) -> Result<(Vec<Source>, Vec<SpecialEntry>, Vec<Record>)> {
     let mut pending = Vec::new();
     let mut names = HashSet::new();
     let mut special_entries = BTreeMap::new();
+    let mut ignored_records = Vec::new();
+    let filters = control.source_filters();
     let destination_existing = if destination.exists() {
         Some(fs::canonicalize(destination).context("无法检查目标压缩包")?)
     } else {
@@ -508,11 +544,45 @@ fn collect_sources(
             .and_then(|name| name.to_str())
             .with_context(|| format!("无法读取源文件名 {}", root.display()))?;
         let root_parent = root.parent().context("不能直接压缩磁盘根目录")?;
+        if fs::metadata(root).is_ok_and(|metadata| metadata.is_dir())
+            && let Some(reason) = ignored_directory_reason(root, filters)
+        {
+            ignored_records.push(Record {
+                kind: RecordKind::IgnoredDirectory,
+                path: Some(root.display().to_string()),
+                name: Some(root_name.to_owned()),
+                reason: reason.to_owned(),
+            });
+            continue;
+        }
 
+        let directory_records = RefCell::new(Vec::new());
         for item in WalkDir::new(root)
             .follow_links(true)
             .into_iter()
-            .filter_entry(|item| !is_work(item))
+            .filter_entry(|item| {
+                if is_work(item) {
+                    return false;
+                }
+                if item.file_type().is_dir()
+                    && let Some(reason) = ignored_directory_reason(item.path(), filters)
+                {
+                    let name = item
+                        .path()
+                        .strip_prefix(root_parent)
+                        .unwrap_or(item.path())
+                        .to_string_lossy()
+                        .replace('\\', "/");
+                    directory_records.borrow_mut().push(Record {
+                        kind: RecordKind::IgnoredDirectory,
+                        path: Some(item.path().display().to_string()),
+                        name: Some(name),
+                        reason: reason.to_owned(),
+                    });
+                    return false;
+                }
+                true
+            })
         {
             control.check_cancelled()?;
             // The archive being replaced is not packed into its successor.
@@ -535,6 +605,12 @@ fn collect_sources(
                     let reason = error.to_string();
                     let Some(path) = error.path().map(Path::to_owned) else {
                         control.warn(format!("扫描警告（已跳过）：{reason}"));
+                        ignored_records.push(Record {
+                            kind: RecordKind::Error,
+                            path: None,
+                            name: None,
+                            reason,
+                        });
                         continue;
                     };
                     (path, Some(reason))
@@ -554,6 +630,12 @@ fn collect_sources(
             };
             let safe = safe_relative_path(&name)?;
             if let Some(reason) = scan_error {
+                ignored_records.push(Record {
+                    kind: RecordKind::Error,
+                    path: Some(path.display().to_string()),
+                    name: Some(name.clone()),
+                    reason: reason.clone(),
+                });
                 let entry = special::capture(&path, &name, &reason)?;
                 if entry.kind == special::SpecialKind::Skipped {
                     control.warn(format!("扫描警告（已跳过）：{reason}"));
@@ -571,12 +653,19 @@ fn collect_sources(
                         path.display(),
                         entry.reason
                     ));
+                    ignored_records.push(Record {
+                        kind: RecordKind::Error,
+                        path: Some(path.display().to_string()),
+                        name: Some(name.clone()),
+                        reason: entry.reason.clone(),
+                    });
                 }
                 special_entries.insert(name, entry);
                 continue;
             }
             pending.push((path, name));
         }
+        ignored_records.extend(directory_records.into_inner());
     }
 
     let metadata = source_metadata(&pending, control)?;
@@ -594,8 +683,31 @@ fn collect_sources(
                 is_directory: metadata.is_dir(),
                 metadata,
             }),
+            Err(error)
+                if filters.ignore_locked_files
+                    && is_locked_file_error(&error)
+                    && fs::metadata(&path).is_ok_and(|metadata| metadata.is_file()) =>
+            {
+                let reason = format!("文件被占用，已忽略：{error}");
+                control.warn(format!(
+                    "扫描警告（已忽略被占用的文件）：{}：{error}",
+                    path.display()
+                ));
+                ignored_records.push(Record {
+                    kind: RecordKind::IgnoredFile,
+                    path: Some(path.display().to_string()),
+                    name: Some(name),
+                    reason,
+                });
+            }
             Err(error) => {
                 let reason = error.to_string();
+                ignored_records.push(Record {
+                    kind: RecordKind::Error,
+                    path: Some(path.display().to_string()),
+                    name: Some(name.clone()),
+                    reason: reason.clone(),
+                });
                 let entry = special::capture(&path, &name, &reason)?;
                 if entry.kind == special::SpecialKind::Skipped {
                     control.warn(format!("扫描警告（已跳过）：{}：{reason}", path.display()));
@@ -604,7 +716,35 @@ fn collect_sources(
             }
         }
     }
-    Ok((sources, special_entries.into_values().collect()))
+    Ok((
+        sources,
+        special_entries.into_values().collect(),
+        ignored_records,
+    ))
+}
+
+fn ignored_directory_reason(path: &Path, filters: super::SourceFilters) -> Option<&'static str> {
+    if filters.ignore_version_control_dirs
+        && path.file_name().is_some_and(|name| {
+            let name = name.to_string_lossy();
+            name.eq_ignore_ascii_case(".git") || name.eq_ignore_ascii_case(".svn")
+        })
+    {
+        return Some("忽略版本控制目录（.git / .svn）");
+    }
+    if filters.ignore_frontend_dependencies
+        && path
+            .file_name()
+            .is_some_and(|name| name.to_string_lossy().eq_ignore_ascii_case("node_modules"))
+    {
+        return Some("忽略前端依赖目录（node_modules）");
+    }
+    if filters.ignore_common_cache_dirs
+        && fs::metadata(path.join("CACHEDIR.TAG")).is_ok_and(|metadata| metadata.is_file())
+    {
+        return Some("忽略常见缓存目录（CACHEDIR.TAG）");
+    }
+    None
 }
 
 /// Reads metadata on several threads; each lookup opens the path on Windows.
@@ -2285,6 +2425,194 @@ impl Read for SevenZipSource<'_, '_, '_, '_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn version_control_filters_only_skip_exact_directory_names() {
+        let temp = tempfile::tempdir().unwrap();
+        let input = temp.path().join("project");
+        for directory in [".git", "nested/.svn", ".github", ".gitignore", "worktree"] {
+            fs::create_dir_all(input.join(directory)).unwrap();
+            fs::write(input.join(directory).join("keep.txt"), b"contents").unwrap();
+        }
+        fs::write(input.join("nested").join(".gitignore"), b"ignored pattern").unwrap();
+        fs::write(input.join(".svnignore"), b"ignored pattern").unwrap();
+        fs::write(input.join("worktree").join(".git"), b"gitdir: elsewhere").unwrap();
+        let work = temp.path().join("work");
+        fs::create_dir(&work).unwrap();
+        let filters = super::super::SourceFilters {
+            ignore_version_control_dirs: true,
+            ..Default::default()
+        };
+        let control = JobControl::default().with_source_filters(filters);
+        let (_, _, records) = collect_sources(
+            &[input.clone()],
+            &temp.path().join("scan.zip"),
+            &work,
+            &control,
+        )
+        .unwrap();
+        assert_eq!(records.len(), 2);
+        for name in ["project/.git", "project/nested/.svn"] {
+            assert!(records.iter().any(|record| {
+                record.kind == RecordKind::IgnoredDirectory && record.name.as_deref() == Some(name)
+            }));
+        }
+        for directory in [input.join(".git"), input.join("nested").join(".svn")] {
+            let (sources, links, records) =
+                collect_sources(&[directory], &temp.path().join("scan.zip"), &work, &control)
+                    .unwrap();
+            assert!(sources.is_empty() && links.is_empty());
+            assert_eq!(records.len(), 1);
+        }
+        for format in [
+            ArchiveFormat::Zip,
+            ArchiveFormat::SevenZip,
+            ArchiveFormat::Tar,
+        ] {
+            for mode in [IntegrityMode::Normal, IntegrityMode::Safe] {
+                for enabled in [false, true] {
+                    let destination = temp.path().join(format!("result.{}", format.extension()));
+                    create_archive(
+                        &CreateOptions {
+                            sources: vec![input.clone()],
+                            destination: destination.clone(),
+                            format,
+                            password: None,
+                            overwrite: true,
+                        },
+                        &JobControl::default()
+                            .with_integrity(mode)
+                            .with_source_filters(super::super::SourceFilters {
+                                ignore_version_control_dirs: enabled,
+                                ..Default::default()
+                            }),
+                    )
+                    .unwrap();
+                    let info =
+                        super::super::inspect_archive(&destination, None, &JobControl::default())
+                            .unwrap();
+                    let names = info
+                        .entries
+                        .iter()
+                        .map(|entry| entry.name.trim_end_matches('/'))
+                        .collect::<HashSet<_>>();
+                    for name in [
+                        "project/.git",
+                        "project/.git/keep.txt",
+                        "project/nested/.svn",
+                        "project/nested/.svn/keep.txt",
+                    ] {
+                        assert_eq!(names.contains(name), !enabled, "{name}");
+                    }
+                    for name in [
+                        "project/nested/.gitignore",
+                        "project/.svnignore",
+                        "project/.github/keep.txt",
+                        "project/.gitignore/keep.txt",
+                        "project/worktree/.git",
+                    ] {
+                        assert!(names.contains(name), "{name}");
+                    }
+                    assert_eq!(names.contains(REPORT_NAME), enabled);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn separate_archives_apply_version_control_filters() {
+        let temp = tempfile::tempdir().unwrap();
+        let input = temp.path().join("project");
+        fs::create_dir_all(input.join(".git")).unwrap();
+        fs::write(input.join(".git").join("config"), b"config").unwrap();
+        fs::write(input.join(".gitignore"), b"patterns").unwrap();
+        let outputs = create_archives_separately(
+            vec![input],
+            &JobControl::default().with_source_filters(super::super::SourceFilters {
+                ignore_version_control_dirs: true,
+                ..Default::default()
+            }),
+        )
+        .unwrap();
+        let info =
+            super::super::inspect_archive(&outputs[0], None, &JobControl::default()).unwrap();
+        assert!(
+            info.entries
+                .iter()
+                .any(|entry| entry.name == "project/.gitignore")
+        );
+        assert!(
+            !info
+                .entries
+                .iter()
+                .any(|entry| entry.name.trim_end_matches('/') == "project/.git"
+                    || entry.name.starts_with("project/.git/"))
+        );
+        assert!(info.entries.iter().any(|entry| entry.name == REPORT_NAME));
+    }
+
+    #[test]
+    fn source_filters_skip_cache_tags_and_node_modules_trees() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let input = temp.path().join("project");
+        let cache = input.join("build-cache");
+        let dependencies = input.join("nested").join("node_modules");
+        fs::create_dir_all(&cache).unwrap();
+        fs::create_dir_all(&dependencies).unwrap();
+        fs::write(cache.join("CACHEDIR.TAG"), b"cache marker").unwrap();
+        fs::write(cache.join("generated.bin"), b"cached").unwrap();
+        fs::write(dependencies.join("package.js"), b"dependency").unwrap();
+        fs::write(input.join("keep.txt"), b"keep").unwrap();
+        let destination = temp.path().join("filtered.zip");
+        let filters = super::super::SourceFilters {
+            ignore_common_cache_dirs: true,
+            ignore_frontend_dependencies: true,
+            ignore_version_control_dirs: false,
+            ignore_locked_files: false,
+        };
+
+        create_archive(
+            &CreateOptions {
+                sources: vec![input, temp.path().join("missing.txt")],
+                destination: destination.clone(),
+                format: ArchiveFormat::Zip,
+                password: None,
+                overwrite: false,
+            },
+            &JobControl::default().with_source_filters(filters),
+        )
+        .unwrap();
+
+        let info =
+            super::super::inspect_archive(&destination, None, &JobControl::default()).unwrap();
+        let names = info
+            .entries
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect::<Vec<_>>();
+        assert!(names.contains(&"project/keep.txt"));
+        assert!(
+            !names
+                .iter()
+                .any(|name| name.starts_with("project/build-cache/"))
+        );
+        assert!(!names.iter().any(|name| name.contains("/node_modules/")));
+        assert!(names.contains(&REPORT_NAME));
+        assert!(names.contains(&MANIFEST_NAME));
+        let mut archive = ZipArchive::new(File::open(&destination).unwrap()).unwrap();
+        let mut contents = String::new();
+        archive
+            .by_name(REPORT_NAME)
+            .unwrap()
+            .read_to_string(&mut contents)
+            .unwrap();
+        assert!(contents.starts_with("Hx6Zip 忽略项与错误记录\n"));
+        assert!(contents.contains("名称：project/build-cache\n"));
+        assert!(contents.contains("名称：project/nested/node_modules\n"));
+        assert!(contents.contains("类型：错误事件\n"));
+        assert!(contents.contains("名称：missing.txt\n"));
+        assert!(!contents.starts_with('{'));
+    }
 
     #[test]
     fn tar_creation_round_trips_files_and_directories() {

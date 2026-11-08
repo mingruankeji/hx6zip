@@ -113,6 +113,18 @@ pub(super) fn followed_source_metadata(path: &Path) -> Result<Metadata> {
     Ok(metadata)
 }
 
+pub(super) fn is_locked_file_error(error: &io::Error) -> bool {
+    #[cfg(windows)]
+    {
+        matches!(error.raw_os_error(), Some(32) | Some(33))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = error;
+        false
+    }
+}
+
 fn link_directory(metadata: &Metadata) -> bool {
     if !is_link_or_reparse(metadata) {
         return false;
@@ -428,6 +440,20 @@ impl<F: FnMut(usize) -> Result<()>> Read for TrackingReader<'_, F> {
 mod tests {
     use super::*;
     use crate::archive::CancellationToken;
+
+    #[test]
+    fn only_windows_sharing_and_lock_violations_are_locked_file_errors() {
+        if cfg!(windows) {
+            assert!(is_locked_file_error(&io::Error::from_raw_os_error(32)));
+            assert!(is_locked_file_error(&io::Error::from_raw_os_error(33)));
+        } else {
+            assert!(!is_locked_file_error(&io::Error::from_raw_os_error(32)));
+            assert!(!is_locked_file_error(&io::Error::from_raw_os_error(33)));
+        }
+        assert!(!is_locked_file_error(&io::Error::from(
+            io::ErrorKind::PermissionDenied
+        )));
+    }
 
     struct ShortReads {
         remaining: usize,

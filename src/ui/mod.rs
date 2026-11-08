@@ -29,8 +29,9 @@ use gpui_kit::{
 };
 use hx6zip::archive::{
     ArchiveFormat, ArchiveInfo, ArchiveTree, CancellationToken, Cancelled, CreateOptions,
-    ExtractOptions, IntegrityMode, JobControl, Progress, SUPPORTED_EXTENSIONS, create_archive,
-    create_archive_auto, create_archives_separately, inspect_archive, smart_destination,
+    ExtractOptions, IntegrityMode, JobControl, Progress, SUPPORTED_EXTENSIONS, SourceFilters,
+    create_archive, create_archive_auto, create_archives_separately, inspect_archive,
+    smart_destination,
 };
 use progress::{CompressionTiming, is_verification};
 
@@ -152,6 +153,7 @@ pub struct AppView {
     open_after_extract: bool,
     dark: bool,
     integrity_mode: IntegrityMode,
+    source_filters: SourceFilters,
     settings_path: Option<PathBuf>,
     status: String,
     status_is_error: bool,
@@ -207,6 +209,7 @@ impl AppView {
         } else {
             settings::settings_path()
         };
+        let stored_settings = settings::load(settings_path.as_deref());
         let password_prompt = Self::password_prompt(cx);
         Self {
             explorer,
@@ -238,7 +241,8 @@ impl AppView {
             smart_extract: true,
             open_after_extract: false,
             dark: false,
-            integrity_mode: settings::load_integrity_mode(settings_path.as_deref()),
+            integrity_mode: stored_settings.integrity_mode,
+            source_filters: stored_settings.source_filters,
             settings_path,
             status: "双击浏览文件，右键选择压缩或解压操作。".to_owned(),
             status_is_error: false,
@@ -801,6 +805,7 @@ impl AppView {
         let cancellation = CancellationToken::default();
         let worker_cancellation = cancellation.clone();
         let integrity = self.integrity_mode;
+        let source_filters = self.source_filters;
         let password_prompt = self.password_prompt.clone();
         let (sender, receiver) = async_channel::bounded(1);
         let started_at = Instant::now();
@@ -817,6 +822,7 @@ impl AppView {
                         .report(progress, &progress_sender, Instant::now());
                 })
                 .with_integrity(integrity)
+                .with_source_filters(source_filters)
                 .with_password_prompt(password_prompt);
                 let result = operation(control.clone());
                 let finished_at = Instant::now();
@@ -939,6 +945,12 @@ impl AppView {
                 last_progress,
                 finished_at,
             } => {
+                let compression_completed = matches!(
+                    &result,
+                    Ok(JobOutput::Created(_)
+                        | JobOutput::AutoCreated(_)
+                        | JobOutput::SeparatelyCreated(_))
+                );
                 let completed = matches!(
                     &result,
                     Ok(JobOutput::Created(_)
@@ -1122,17 +1134,23 @@ impl AppView {
                     Err(error) => self.set_status(format!("{error:#}"), true, cx),
                 }
                 if !warnings.is_empty() {
+                    let message = if compression_completed {
+                        "忽略项与可继续处理的错误已记录在 Ignored_Items.mmzip。".to_owned()
+                    } else {
+                        warnings.join("；")
+                    };
                     self.set_status(
-                        format!("{}；{}", self.status, warnings.join("；")),
+                        format!("{}；{message}", self.status),
                         self.status_is_error,
                         cx,
                     );
                 }
-                if self.close_requested && !self.status_is_error && warnings.is_empty() {
+                let warnings_block_close = !warnings.is_empty() && !compression_completed;
+                if self.close_requested && !self.status_is_error && !warnings_block_close {
                     cx.quit();
                 } else if self.shell_progress
                     && !self.status_is_error
-                    && warnings.is_empty()
+                    && !warnings_block_close
                     && (completed || cancelled)
                 {
                     self.schedule_auto_close(cx);
@@ -1255,7 +1273,11 @@ impl AppView {
         if mode == self.integrity_mode {
             return;
         }
-        match settings::save_integrity_mode(self.settings_path.as_deref(), mode) {
+        let settings = settings::Settings {
+            integrity_mode: mode,
+            source_filters: self.source_filters,
+        };
+        match settings::save(self.settings_path.as_deref(), settings) {
             Ok(()) => {
                 self.integrity_mode = mode;
                 self.set_status(
@@ -1266,6 +1288,55 @@ impl AppView {
             }
             Err(error) => self.set_status(format!("{error:#}"), true, cx),
         }
+    }
+
+    fn set_source_filters(&mut self, source_filters: SourceFilters, cx: &mut Context<Self>) {
+        if self.running.is_some() {
+            self.set_status("请等待当前任务完成后再更改设置。", true, cx);
+            return;
+        }
+        if source_filters == self.source_filters {
+            return;
+        }
+        let settings = settings::Settings {
+            integrity_mode: self.integrity_mode,
+            source_filters,
+        };
+        match settings::save(self.settings_path.as_deref(), settings) {
+            Ok(()) => {
+                self.source_filters = source_filters;
+                self.set_status(
+                    "压缩源文件忽略选项已保存，此后的压缩任务将应用这些设置。",
+                    false,
+                    cx,
+                );
+            }
+            Err(error) => self.set_status(format!("{error:#}"), true, cx),
+        }
+    }
+
+    fn set_ignore_common_cache_dirs(&mut self, ignored: bool, cx: &mut Context<Self>) {
+        let mut filters = self.source_filters;
+        filters.ignore_common_cache_dirs = ignored;
+        self.set_source_filters(filters, cx);
+    }
+
+    fn set_ignore_frontend_dependencies(&mut self, ignored: bool, cx: &mut Context<Self>) {
+        let mut filters = self.source_filters;
+        filters.ignore_frontend_dependencies = ignored;
+        self.set_source_filters(filters, cx);
+    }
+
+    fn set_ignore_locked_files(&mut self, ignored: bool, cx: &mut Context<Self>) {
+        let mut filters = self.source_filters;
+        filters.ignore_locked_files = ignored;
+        self.set_source_filters(filters, cx);
+    }
+
+    fn set_ignore_version_control_dirs(&mut self, ignored: bool, cx: &mut Context<Self>) {
+        let mut filters = self.source_filters;
+        filters.ignore_version_control_dirs = ignored;
+        self.set_source_filters(filters, cx);
     }
 
     fn change_theme(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1586,11 +1657,37 @@ mod tests {
     }
 
     #[gpui_kit::test]
-    fn compression_warnings_keep_shell_progress_open(cx: &mut gpui_kit::TestAppContext) {
+    fn compression_warnings_complete_normally(cx: &mut gpui_kit::TestAppContext) {
         use std::path::PathBuf;
 
         use super::{AppView, JobKind, JobOutput};
         use gpui_kit::{base::Root, *};
+        use hx6zip::archive::{
+            ArchiveFormat, CreateOptions, JobControl, create_archive, inspect_archive,
+        };
+
+        let temp = tempfile::tempdir().unwrap();
+        let archive_path = temp.path().join("output.zip");
+        let control = JobControl::default();
+        create_archive(
+            &CreateOptions {
+                sources: vec![temp.path().join("missing.txt")],
+                destination: archive_path.clone(),
+                format: ArchiveFormat::Zip,
+                password: None,
+                overwrite: false,
+            },
+            &control,
+        )
+        .unwrap();
+        let info = inspect_archive(&archive_path, None, &control).unwrap();
+        assert!(
+            info.entries
+                .iter()
+                .any(|entry| entry.name == "Ignored_Items.mmzip")
+        );
+        let warnings = control.warnings();
+        assert!(!warnings.is_empty());
 
         cx.update(gpui_kit::init);
         let (root, cx) = cx.add_window_view(|window, cx| {
@@ -1601,33 +1698,60 @@ mod tests {
             root.view().clone().downcast::<AppView>().unwrap()
         });
         view.update(cx, |app, cx| {
-            for (kind, output) in [
+            for (kind, output, shell_progress) in [
+                (JobKind::Create, JobOutput::Created(info.clone()), false),
+                (JobKind::Create, JobOutput::Created(info), true),
                 (
                     JobKind::Create,
                     JobOutput::AutoCreated(PathBuf::from(r"C:\output.zip")),
+                    false,
+                ),
+                (
+                    JobKind::Create,
+                    JobOutput::AutoCreated(PathBuf::from(r"C:\output.zip")),
+                    true,
                 ),
                 (
                     JobKind::CreateEach,
                     JobOutput::SeparatelyCreated(vec![PathBuf::from(r"C:\output.zip")]),
+                    true,
                 ),
             ] {
                 app.job_kind = kind;
-                app.shell_progress = true;
-                app.close_requested = true;
+                app.shell_progress = shell_progress;
+                app.close_deadline = None;
                 app.handle_job_event(
                     JobEvent::Finished {
                         result: Ok(output),
-                        warnings: vec!["扫描警告（仅保留空文件夹）：broken".to_owned()],
+                        warnings: warnings.clone(),
                         last_progress: None,
                         finished_at: Instant::now(),
                     },
                     cx,
                 );
-                assert!(app.status.contains("扫描警告"));
-                assert!(app.status.contains("broken"));
+                assert!(
+                    app.status.starts_with("压缩完成") || app.status.starts_with("压缩包已创建")
+                );
+                assert!(app.status.contains("Ignored_Items.mmzip"));
+                assert!(!app.status.contains("扫描警告"));
                 assert!(!app.status_is_error);
-                assert!(app.close_deadline.is_none());
+                assert_eq!(app.close_deadline.is_some(), shell_progress);
+                assert!(app.running.is_none());
             }
+            app.close_deadline = None;
+            app.handle_job_event(
+                JobEvent::Finished {
+                    result: Err(anyhow::anyhow!("无法保存压缩包")),
+                    warnings: vec!["扫描警告：broken".to_owned()],
+                    last_progress: None,
+                    finished_at: Instant::now(),
+                },
+                cx,
+            );
+            assert!(app.status_is_error);
+            assert!(app.status.contains("无法保存压缩包"));
+            assert!(app.status.contains("扫描警告"));
+            assert!(app.close_deadline.is_none());
         });
         cx.update(|window, cx| window.draw(cx).clear(cx));
     }
@@ -1779,7 +1903,7 @@ mod tests {
     fn settings_page_switches_and_persists_integrity_mode(cx: &mut gpui_kit::TestAppContext) {
         use super::{AppView, JobKind, Page, settings};
         use gpui_kit::{base::Root, *};
-        use hx6zip::archive::IntegrityMode;
+        use hx6zip::archive::{IntegrityMode, SourceFilters};
 
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("settings.json");
@@ -1803,10 +1927,22 @@ mod tests {
             assert!(app.integrity_mode == IntegrityMode::Normal);
             assert!(!app.status_is_error);
             assert!(app.status.contains("高速模式"));
+            app.set_ignore_common_cache_dirs(true, cx);
+            app.set_ignore_frontend_dependencies(true, cx);
+            app.set_ignore_version_control_dirs(true, cx);
+            app.set_ignore_locked_files(true, cx);
         });
         assert_eq!(
-            settings::load_integrity_mode(Some(&path)),
-            IntegrityMode::Normal
+            settings::load(Some(&path)),
+            settings::Settings {
+                integrity_mode: IntegrityMode::Normal,
+                source_filters: SourceFilters {
+                    ignore_common_cache_dirs: true,
+                    ignore_frontend_dependencies: true,
+                    ignore_version_control_dirs: true,
+                    ignore_locked_files: true,
+                },
+            }
         );
         cx.update(|window, cx| window.draw(cx).clear(cx));
         view.update(cx, |app, cx| {

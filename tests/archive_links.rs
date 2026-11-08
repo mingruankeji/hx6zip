@@ -328,8 +328,14 @@ fn missing_sources_warn_including_separate_archive_batches() {
             let control = JobControl::default().with_integrity(mode);
             create_archive(&options(&missing, &archive, format), &control).unwrap();
             let info = inspect_archive(&archive, None, &control).unwrap();
-            assert_eq!(info.entries.len(), 1);
-            assert_eq!(info.entries[0].name, "Special_Cases_List.mhx6zip");
+            let names = info
+                .entries
+                .iter()
+                .map(|entry| entry.name.as_str())
+                .collect::<Vec<_>>();
+            assert_eq!(names.len(), 2);
+            assert!(names.contains(&"Special_Cases_List.mhx6zip"));
+            assert!(names.contains(&"Ignored_Items.mmzip"));
             assert_eq!(control.warnings().len(), 1);
             assert!(control.warnings()[0].contains("missing.txt"));
         }
@@ -349,7 +355,8 @@ fn missing_sources_warn_including_separate_archive_batches() {
 #[cfg(windows)]
 #[test]
 fn locked_source_files_warn_and_do_not_discard_readable_files() {
-    use std::os::windows::fs::OpenOptionsExt;
+    use hx6zip::archive::SourceFilters;
+    use std::{io::Read, os::windows::fs::OpenOptionsExt};
 
     for format in [ArchiveFormat::Zip, ArchiveFormat::SevenZip] {
         for mode in [IntegrityMode::Normal, IntegrityMode::Safe] {
@@ -365,12 +372,37 @@ fn locked_source_files_warn_and_do_not_discard_readable_files() {
                 .open(&locked)
                 .unwrap();
             let archive = temp.path().join(format!("test.{}", format.extension()));
-            let control = JobControl::default().with_integrity(mode);
+            let control = JobControl::default()
+                .with_integrity(mode)
+                .with_source_filters(SourceFilters {
+                    ignore_locked_files: true,
+                    ..SourceFilters::default()
+                });
             create_archive(&options(&source, &archive, format), &control).unwrap();
             assert!(control.warnings().iter().any(|w| w.contains("locked.txt")));
             let info = inspect_archive(&archive, None, &control).unwrap();
             assert!(info.entries.iter().any(|e| e.name == "source/ok.txt"));
             assert!(!info.entries.iter().any(|e| e.name.contains("locked.txt")));
+            assert!(info.entries.iter().any(|e| e.name == "Ignored_Items.mmzip"));
+            assert!(
+                !info
+                    .entries
+                    .iter()
+                    .any(|e| e.name == "Special_Cases_List.mhx6zip")
+            );
+            if format == ArchiveFormat::Zip {
+                let mut reader = zip::ZipArchive::new(fs::File::open(&archive).unwrap()).unwrap();
+                let mut contents = String::new();
+                reader
+                    .by_name("Ignored_Items.mmzip")
+                    .unwrap()
+                    .read_to_string(&mut contents)
+                    .unwrap();
+                assert!(contents.starts_with("Hx6Zip 忽略项与错误记录\n"));
+                assert!(contents.contains("类型：忽略文件\n"));
+                assert!(contents.contains("名称：source/locked.txt\n"));
+                assert!(!contents.starts_with('{'));
+            }
         }
     }
 }

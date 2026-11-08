@@ -1320,7 +1320,89 @@ impl AppView {
                             .flex()
                             .flex_col()
                             .gap(px(12.0))
-                            .child(section_title("2", "两种模式的区别", palette))
+                            .child(section_title("2", "压缩时忽略内容", palette))
+                            .child(
+                                div()
+                                    .text_size(px(12.0))
+                                    .text_color(palette.muted)
+                                    .child("这些选项只影响此后的压缩任务，不会删除或修改源文件。"),
+                            )
+                            .child(
+                                Checkbox::new("ignore-common-cache-dirs")
+                                    .label("忽略常见缓存目录")
+                                    .checked(self.source_filters.ignore_common_cache_dirs)
+                                    .disabled(busy)
+                                    .on_click(cx.listener(|this, checked, _, cx| {
+                                        this.set_ignore_common_cache_dirs(*checked, cx);
+                                    })),
+                            )
+                            .child(
+                                div()
+                                    .pl(px(24.0))
+                                    .text_size(px(11.0))
+                                    .text_color(palette.muted)
+                                    .child("跳过包含 CACHEDIR.TAG 标记文件的目录及其内容。"),
+                            )
+                            .child(
+                                Checkbox::new("ignore-frontend-dependencies")
+                                    .label("忽略前端依赖目录")
+                                    .checked(self.source_filters.ignore_frontend_dependencies)
+                                    .disabled(busy)
+                                    .on_click(cx.listener(|this, checked, _, cx| {
+                                        this.set_ignore_frontend_dependencies(*checked, cx);
+                                    })),
+                            )
+                            .child(
+                                div()
+                                    .pl(px(24.0))
+                                    .text_size(px(11.0))
+                                    .text_color(palette.muted)
+                                    .child("跳过名为 node_modules 的目录及其内容。"),
+                            )
+                            .child(
+                                Checkbox::new("ignore-version-control-dirs")
+                                    .label("忽略版本控制目录")
+                                    .checked(self.source_filters.ignore_version_control_dirs)
+                                    .disabled(busy)
+                                    .on_click(cx.listener(|this, checked, _, cx| {
+                                        this.set_ignore_version_control_dirs(*checked, cx);
+                                    })),
+                            )
+                            .child(
+                                div()
+                                    .pl(px(24.0))
+                                    .text_size(px(11.0))
+                                    .text_color(palette.muted)
+                                    .child("仅跳过名为 .git 或 .svn 的目录及其内容，不忽略 .gitignore 等文件。"),
+                            )
+                            .child(
+                                Checkbox::new("ignore-locked-files")
+                                    .label("忽略被占用的文件")
+                                    .checked(self.source_filters.ignore_locked_files)
+                                    .disabled(busy)
+                                    .on_click(cx.listener(|this, checked, _, cx| {
+                                        this.set_ignore_locked_files(*checked, cx);
+                                    })),
+                            )
+                            .child(
+                                div()
+                                    .pl(px(24.0))
+                                    .text_size(px(11.0))
+                                    .text_color(palette.muted)
+                                    .child("跳过因 Windows 文件共享冲突而无法读取的文件，例如运行中的数据库文件。"),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .rounded(px(12.0))
+                            .border_1()
+                            .border_color(palette.border)
+                            .bg(palette.surface)
+                            .p(px(18.0))
+                            .flex()
+                            .flex_col()
+                            .gap(px(12.0))
+                            .child(section_title("3", "两种模式的区别", palette))
                             .child(
                                 div()
                                     .rounded(px(8.0))
