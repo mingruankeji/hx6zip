@@ -1,353 +1,103 @@
 # Hx6Zip
 
-Hx6Zip 是一款跨平台优先的原生桌面压缩工具，目前只做了Windows适配。界面使用 Rust 和 GPUI Kit，压缩任务在后台运行。
+**中文** | [English](#english)
+
+Hx6Zip 是一款适用于 Windows 的桌面压缩软件，提供文件浏览、压缩包管理、Windows 资源管理器右键菜单和拖放操作。
 
 ## 下载
 
-在 [GitHub Releases](https://github.com/mingruankeji/hx6zip/releases) 下载已编译的 Windows x64 安装包：
+从 [GitHub Releases](https://github.com/mingruankeji/hx6zip/releases) 下载：
 
-- [Hx6Zip-Setup-0.1.2-x64.msi](https://github.com/mingruankeji/hx6zip/releases/download/v0.1.2/Hx6Zip-Setup-0.1.2-x64.msi)
+- [Windows x64 安装版（MSI）](https://github.com/mingruankeji/hx6zip/releases/download/v0.1.2/Hx6Zip-Setup-0.1.2-x64.msi)
+- [Windows x64 便携版（ZIP）](https://github.com/mingruankeji/hx6zip/releases/download/v0.1.2/Hx6Zip-Portable-0.1.2-x64.zip)
 
-当前版本使用开发证书提供 Windows 11 新版右键菜单，安装时可能提示“未知发布者”并请求 UAC 信任证书；详情见下方“Windows 11 新版右键菜单”。仅安装你信任的程序。
+安装版可集成资源管理器右键菜单。当前安装包使用开发证书，Windows 可能提示“未知发布者”或请求管理员权限以信任证书；请仅安装你信任的软件。便携版不注册系统菜单。
 
-## 当前功能
+## 主要功能
 
-- 主窗口默认显示轻量资源管理器：浏览磁盘、常用用户文件夹，支持地址栏（回车前往）、前进/后退、上一级、刷新、当前目录名称过滤和虚拟滚动文件列表。目录读取在后台运行；失败时显示错误并保留原目录。
-- 文件列表支持勾选、Ctrl 多选、Shift 范围选择，以及按住鼠标左键拖框选择；按住 Ctrl 拖框可保留已有选择，拖到列表边缘会自动滚动，拖框时按 Escape 可取消。列表获得焦点后可使用 Ctrl+A、方向键、Enter、Backspace、Alt+左右方向键、F5 和 Escape。选中项目后通过右键或顶部“操作”菜单压缩/解压，使用与 Windows 右键相同的独立配置及进度窗口。任务完成后点击刷新（或 F5）查看输出。
-- 双击压缩包、菜单打开或命令行打开，都直接进入主界面的资源浏览器，按原目录层级显示（包括没有显式目录条目的文件夹），而不是展开成扁平列表。地址栏、前进/后退、上一级、刷新、名称过滤及多选继续可用；包内根目录的“上一级”回到压缩包所在文件夹。顶部“文件”菜单仍保留原有“浏览与解压”和“创建压缩包”界面。
-- ZIP 打开只读取中央目录元数据，不逐项定位本地文件头或解压内容；7z 打开读取归档头。目录索引在后台建立并缓存，进入子目录和前进/后退不重新打开同一个压缩包；F5/刷新重新读取，包内修改完成后重建索引。
-- 参考 7-Zip 文件管理器的操作方式：包内所选文件/文件夹可直接拖到 Windows 文件夹中，保留所选目录的内部结构；拖出是复制解压，不删除包内原件。Windows 文件夹中的文件/文件夹可拖入当前包内目录，或使用“添加”“添加文件夹”。同名文件先提示确认替换，同名目录合并；文件与文件夹类型冲突时提示替换整个项目。“删除”、右键删除或 Delete 键可删除所选项目及子目录，执行前确认。
-- 拖出达到拖动阈值即进入 Windows 原生拖放，显示复制/禁止放置光标；鼠标按住或悬停时只查询落点和提供文件列表，不解压。所有已支持格式均优先直接解压，包括 ZIP、7z、RAR、CAB、TAR 及其压缩变体、单文件压缩流和 ISO：资源管理器/桌面空白处对应当前目录，文件夹图标对应该文件夹内部，普通文件图标对应该文件所在目录，不启动图标对应的应用。通过鼠标位置、OLE 目标窗口、Shell 视图及实际 Shell 项目核实路径；同名显示文字不能唯一确定目标时不猜路径。确认后先取消系统传输，再由 Hx6Zip 解压，避免 Explorer 再复制一次；状态栏显示“已直接解压到”及实际路径。目标有同名文件时，在写入前统一询问是否全部替换；取消不改目标，确认后继续直接解压。已有文件夹合并，不删除无关文件；文件/文件夹类型冲突报错。导航栏、虚拟目录和无法确认的落点保留系统传输：ZIP 按接收程序请求流式解压，无需完整临时副本；安全模式先校验所选内容。非 ZIP 格式回退时仍先提取到临时目录。普通文件落点由 Hx6Zip 接管，必要时显示普通箭头而非禁止光标。拖动中按 Esc 取消，提取时可用主窗口的取消按钮，关闭主窗口也会取消任务。拖出相对路径达到 260 个 UTF-16 单元时请改用“解压所选到”。
-- 修改支持普通 `.zip`、`.7z`；其他格式及自解压文件只支持浏览、打开和拖出解压。包内双击普通文件会提取临时副本并交给系统默认应用（外部编辑不会自动写回）；双击包内压缩包可继续浏览。需要临时提取的拖出和打开操作，其临时文件保留至本次 Hx6Zip 窗口关闭，使用期间请不要提前关闭程序。
-- 轻量浏览器不替代磁盘文件的系统复制、移动、删除功能，也不加载第三方 Shell 菜单。
-- 浏览、搜索和解压 ZIP、7z、CAB、RAR、ISO 9660/Joliet/Rock Ridge、TAR，以及 gzip、bzip2、XZ、Zstandard、Brotli 压缩文件，支持将压缩包拖入窗口。
-- 加密 ZIP、7z、RAR 在需要密码时自动弹窗，覆盖右键解压、打开加密目录、包内文件打开/拖出，以及 ZIP/7z 拖入添加和删除。密码输入默认隐藏，可取消；仅在当前窗口内按压缩包路径缓存，不写入设置。安全模式下密码错误可重新输入，重试前回滚本次输出；高速模式遇到解码错误保留既有行为，显示错误，不自动重做已写入的内容。
-- Linux ISO 中的 Rock Ridge 符号链接保留在浏览列表中，解压时跳过，不创建或跟随链接；其他普通文件和文件夹正常解压。完成状态列出本次跳过的链接，右键进度窗口不会自动关闭，便于查看提示；仅选择链接时明确报错，不生成空输出。主窗口、右键解压及拖出解压使用相同规则，其他特殊条目仍拒绝解压。
-- 支持读取内嵌 ZIP、7z、RAR 的常见自解压文件（例如 `.exe`、`.run` 或无扩展名文件），按内容识别，不运行自解压程序；密码、选择性解压、覆盖保护和路径检查沿用普通压缩包规则。
-- ZIP 容器还支持 `.zipx`、`.jar`、OpenDocument（`.odt`、`.ods`、`.odp`、`.odg`、`.odf`、`.odb`）及旧版 OpenOffice（`.sxw`、`.sxc`、`.sxi`、`.sxd`）扩展名。
-- 支持 `.tar.gz`/`.tgz`、`.tar.bz2`/`.tbz`/`.tbz2`、`.tar.xz`/`.txz`、`.tar.zst`/`.tar.zstd`/`.tzst`、`.tar.br`/`.tar.brotli`/`.tbr`，以及单文件 `.gz`、`.bz2`、`.xz`、`.zst`/`.zstd`、`.br`/`.brotli`。
-- 创建 ZIP、7z 或 TAR，支持添加多个文件和文件夹、空文件夹及 Unicode 文件名；TAR 不支持加密。
-- 创建 ZIP、7z、TAR 和向 ZIP/7z 包内添加文件时，跟随可读取的源符号链接及 Windows 目录联接（Junction），按链接所在路径打包实际内容，解压后为普通文件和文件夹，不保留这些正常链接的关系。适用于 pnpm 的 node_modules；共享依赖可能重复打包，增加耗时及解压体积。扫描时遇到失效链接、缺失项目或无法读取的目录/文件，继续处理可读项目。失效链接不再伪装成空文件夹，而是在压缩包根目录的 UTF-8 JSON 文本 `Special_Cases_List.mhx6zip` 中记录包内路径、链接类型、原始目标及原因；已完整记录、可恢复的链接不再显示扫描警告。缺失或不可读内容、无法记录为可恢复链接的项目仍提示警告，并记录未备份原因，不能由清单恢复数据。没有特殊情况时不生成清单；需要生成清单但源项目占用该根目录名称时明确报错，不覆盖用户文件。
-- 设置页可选择忽略含 `CACHEDIR.TAG` 的缓存目录、`node_modules` 目录、版本控制目录（仅名称恰好为 `.git` / `.svn` 的目录，不忽略 `.gitignore` 等文件），或 Windows 文件共享冲突导致无法读取的文件。压缩成功且扫描到可继续处理的忽略项或错误时，归档根目录会额外生成 UTF-8 纯文本 `Ignored_Items.mmzip`，用中文描述被忽略的文件/文件夹或错误事件；被忽略文件夹仅记录自身路径和名称，不展开记录其内容。该报告与链接清单 `Special_Cases_List.mhx6zip` 分开保存，没有忽略项或可继续处理的错误时不生成。已记录的可继续处理错误不影响正常完成，页面提示查看报告，右键压缩窗口仍在完成后自动关闭；真正导致压缩失败的错误仍会保留错误提示。
-- Hx6Zip 解压 ZIP/7z 时，普通文件全部成功解压后才尝试恢复所选范围内的特殊链接；安全模式在普通内容校验、提交后恢复。目录拖出采用对应的目标路径。按原始目标尝试恢复，包括绝对路径、解压目录外目标和仍不存在的目标，不事先确认；请只对可信压缩包使用此功能，恢复的链接可能指向其他目录。链接自身路径不能越出解压目录，不覆盖已有项目，也不通过已有或刚恢复的链接创建后续链接。清单中所有特殊条目均成功处理后，自动删除本次解压到目标根目录的清单文件，不改动压缩包内的清单；仅提取清单文本、未处理全部条目、存在未备份内容或恢复失败时保留清单供查看。系统权限不足、类型不受支持、恢复或清单清理失败仅显示警告，不撤销已解压的普通内容。其他解压软件只会得到清单文本，不执行 Hx6Zip 的特殊恢复规则。
-- 主窗口、右键压缩、逐个压缩和包内添加使用相同规则，有警告时进度窗口不会自动关闭。循环链接仍明确报错以防无限递归；压缩开始后的源数据变化、读取或写入失败仍终止，不发布新包或替换原包。
-- 安全模式同样支持特殊情况清单：压缩回读逐字节校验清单，并重新扫描、比较特殊条目的路径、类型和链接目标，变化时不发布新包。解压校验按实际包内条目检查，不要求清单中的失效链接预先存在；普通内容全部校验、提交成功后再恢复链接，取消或校验失败不进入链接恢复步骤。
-- 保留文件和文件夹的修改时间；Windows 上的 ZIP 使用 NTFS 扩展记录精确时间，兼容仅有 DOS 时间的归档。
-- 创建和解压 AES 加密的 ZIP、7z，解压有密码的 RAR；ZIP 加密不隐藏文件名，7z 加密默认隐藏文件名。
-- 解压全部或勾选的文件；勾选文件夹时同时提取其中的内容。
-- 智能选择解压文件夹、同名文件先确认是否全部替换、完成后打开目标文件夹。
-- 显示后台任务进度、取消、暂停/继续任务，切换浅色和深色主题。
-- 顶部“工具 → API 测试工具”打开内置的 HTTP 请求工作台，支持请求管理、环境变量、认证、断言和响应查看。
-- 顶部“帮助 → 关于 Hx6Zip”显示版本、作者（大明哥）以及对所用开源库的致谢；各库许可证见 `THIRD_PARTY_NOTICES.txt`。
-- 支持通过 `hx6zip.exe 压缩包路径` 直接打开支持的格式。安装版可由用户在 Windows 设置中指定为相应扩展名的默认应用。
-- 安装版右键菜单统一收在“Hx6Zip”二级菜单中：创建 ZIP、创建 7z、添加到压缩文件、打开和解压、解压到当前文件夹、解压到压缩文件名文件夹、解压到；便携版不注册右键菜单。
-- 资源管理器多选文件、文件夹或混合选择后，一次右键操作合并创建一个压缩包，自动开始，无需进入主界面再次确认。
-- Windows 新版/传统右键菜单和主程序文件列表右键（以及顶部“操作”菜单）支持“压缩每个到单独的压缩包中”：每个选中项各生成一个 ZIP，分别放在源文件或文件夹所在目录。自动开始，只打开一个操作窗口，不显示进度条；支持暂停和取消，重名自动加序号，不覆盖源文件。
-- 右键“添加到压缩文件”可选择保存位置、ZIP 或 7z，并可输入和确认密码；默认保存在所选文件所在文件夹。右键“解压到”默认使用压缩包所在文件夹，也可浏览选择其他文件夹和输入密码。
-- 右键压缩和解压的进度窗口分为三块：任务信息、压缩/解压进度、校验进度。校验进度单独显示：安全模式下压缩完成后显示回读校验进度，解压时显示解压结果校验和提交进度；高速模式下注明仅校验格式自带的 CRC 等校验值，不做回读比较。
-- 右键压缩和解压的进度窗口在完成或取消后显示 5 秒倒计时并自动关闭；发生错误时不会自动关闭，倒计时内点击“打开主窗口”会取消自动关闭。主窗口不会因压缩或解压完成而退出。
-- 主窗口压缩和解压时与右键进度窗口一样显示平均速度、已用时间和预计剩余时间；压缩时还显示压缩前后大小和压缩率。
-- 主程序文件列表和 Windows 资源管理器的 Hx6Zip 右键菜单：单选文件可“分割文件”；多选同名、同目录且从 `.001` 开始的连续分片可“合并文件”。原始分片不压缩，按数字编号合并，恢复原文件名并保存在分片所在目录；不会覆盖已有文件，也不会删除源文件或分片。
-- 分割窗口提供可编辑的“分割文件到”地址框和选择按钮，默认源文件所在目录。“分卷大小 MB”下拉列表提供 `10M`、`100M`、`1000M`、`650M-CD`、`700M-CD`、`4092M-FAT`、`4480M-DVD`、`8128M-DVD DL`、`23040M-BD`，默认 `10M`（1 MB = 1024² 字节）。输出命名为 `原文件名.001`、`.002`…，支持进度、暂停和取消；失败或取消保留已完成的分片，清理正在写入的临时文件。
+- 浏览文件夹和压缩包；创建 ZIP、7z、TAR，查看、解压 ZIP、7z、RAR、CAB、ISO、TAR 及常见压缩流格式。
+- 修改 ZIP 和 7z，支持添加、替换和删除内容；可处理加密 ZIP、7z 和 RAR。
+- 在压缩包与文件夹之间拖放文件；支持选择性解压、Windows 右键快速压缩和解压。
+- 分割文件并合并连续分片。
+- 后台运行压缩任务，显示进度和速度，支持暂停与取消。
+- 可选择忽略常见缓存目录、`node_modules`、版本控制目录或被占用的文件；必要时在压缩包中生成说明报告。
+- 提供高速和安全两种完整性模式。安全模式会在发布压缩结果前进行额外校验，并在受支持的失败或取消场景下回滚文件操作。
+- 内置 HTTP API 测试工具。
+
+## 快速开始
+
+1. 启动 Hx6Zip，在主窗口浏览文件，或直接打开压缩包。
+2. 选择文件后使用工具栏、右键菜单或拖放执行压缩和解压。
+3. 要添加或删除压缩包内的内容，请打开 ZIP 或 7z 后使用“添加”或“删除”。
 
 ## 安全与限制
 
-- **完整性与忽略设置**：侧边栏“设置”页（或顶部菜单栏右侧的模式按钮）可选择“高速模式”（默认）或“安全模式”，并可选忽略常见缓存目录、前端依赖目录、版本控制目录和被占用的文件。页面中列出完整性模式的区别。设置保存在 `%LOCALAPPDATA%\Hx6Zip\settings.json`，对之后的所有压缩任务生效，包括资源管理器右键菜单发起的任务；任务进行中不能切换。
-  - **安全模式**：适合重要备份，即下面所述的事务和回读校验保证。
-  - **高速模式**：与 7-Zip 等常见压缩软件一致。创建后不回读、不与源文件逐字节比较，也不检测压缩期间源目录的增删（失败或取消时仍不发布半成品压缩包）。解压直接写入目标文件夹，仍检查路径安全并校验格式自带的 CRC 等信息；中途失败或取消时，已解压的文件会保留，结果可能不完整。
-- 解压时遇到同名文件，在写入前提供“全部替换”和“取消”；取消不会更改目标，确认后只覆盖本次所选文件，已有目录合并并保留无关文件。文件与文件夹类型冲突会报错，不删除整个目录。
-- 下面两条（解压事务回滚和创建后回读校验）仅适用于安全模式。
-- 安全模式以**单个压缩包**为事务边界：压缩失败或取消不发布新包，也不替换旧包；解压先将全部所选条目写入同盘临时目录，检查解码结果、条目是否齐全、实际大小及格式自带的校验，全部成功后才提交。提交中失败或取消会撤销该包的新文件和新目录，恢复被覆盖的原文件及原目录修改时间；不保留该包的部分成功结果。选择性解压以本次所选条目为边界，多包操作中此前已成功的包不回滚。
-- **交给外部程序处理的拖放不具备目标文件事务回滚**：目标位置及同名文件由接收程序控制，失败或取消时目标可能保留部分文件。ZIP 回退到流式传输时，安全模式先验证所选文件，再重新解码并交给接收程序；需要可靠的事务回滚保证时，请使用“解压所选到”。所有格式的直接解压分支沿用本程序的完整性模式：高速模式在目标目录写入单文件临时文件并重命名，不生成完整的系统临时副本；安全模式仍先在目标附近的事务目录暂存、校验，再提交，不绕过校验或回滚。直接分支未经确认不覆盖已有文件；确认“全部替换”后覆盖本次所选文件，安全模式提交失败或取消时恢复原有文件。接管后发生错误则直接报告，不再重试系统复制。
-- 创建 ZIP、7z 或 TAR 后，必须完整回读临时压缩包（ZIP/7z 包括加密包），将解码内容与源文件逐字节比较，检查条目列表，并再次扫描源目录、检查源类型、大小和修改时间，全部通过后才发布。校验会额外读取源文件并解码一次压缩包，耗时和 I/O 会增加；校验期间仍可暂停或取消。
-- 此保证针对程序能检测到的读写错误、数据损坏、密码错误和取消，不是跨文件系统的断电事务：不保证断电、系统崩溃或强杀后的自动回滚。提交期间其他程序可能短暂看到部分新结果，请等待 Hx6Zip 明确报告成功后使用输出。如果回滚本身因磁盘失联、权限或文件占用而失败，会显示错误并保留尚存的恢复目录（其中 `backup` 按原相对路径保存旧文件），不能把该目标当作有效备份；请保留恢复目录并人工恢复。
-- 重要备份请保证源内容静止，数据库等应先生成一致性快照或导出文件；不要在任务过程中修改源目录、源压缩包或目标目录。Hx6Zip 不提供 VSS/数据库快照，不保证并发修改下的时间点一致性。解压原有归档时只能使用该格式提供的校验信息；TAR、ISO、Brotli 等没有完整的文件内容校验，不能识别所有等长损坏。建议另存可信的 SHA-256 清单并做恢复演练。
-- 完整性指普通文件内容、目录结构及支持的修改时间，不是系统镜像：不保证保存 ACL、所有者、NTFS 备用数据流或其他未支持的元数据。解压需容纳全部所选内容的临时空间，旧文件在提交完成前保留用于回滚。
-- 解压前检查路径穿越、Windows 保留名称、重复路径及链接类型。与官方 7-Zip 一样，解压目标已有的目录符号链接或目录联接可正常使用，内容写入其实际目标（可能位于所选目录之外）；文件链接、失效链接和类型冲突仍明确报错。请确认目标链接可信，不要让其他进程在解压过程中并发修改目标目录。
-- 按默认模式创建的 ZIP、7z 和 TAR 包含普通内容，可正常解压，不需要创建链接。安全模式跟随已有目录链接时，仍对实际目标执行覆盖保护和失败/取消回滚；包内单独保存的符号链接仍不创建。
-- ZIP 和 7z 不设固定条目数上限，但大量条目仍受可用内存和磁盘空间限制；CAB、RAR、TAR 和 ISO 最多 100,000 个条目，ISO 的多区段记录也计入此限制。
-- 解压总大小不设固定上限，受可用磁盘空间和文件系统限制；不可信压缩包可能耗尽磁盘空间，请谨慎解压。
-- 7z、RAR 固实压缩包的选择性解压可能需要先读取并解码前面的文件，取消并不一定立即生效。
-- 新压缩包可以保存在所选的源文件夹内部；压缩时会自动排除将被替换的同名目标压缩包，不会把它打包进新压缩包。启用覆盖时也可以用新压缩包替换作为输入的源文件（源文件会先完整打包进新压缩包）。
-- 创建 ZIP、7z 和未压缩 TAR；其他格式只支持查看与解压。不支持创建自解压文件、分卷压缩包或 DMG；ACE、ARJ 等未列出的格式也暂不支持。
-- 修改已有 ZIP 时，未变更条目直接复制原始压缩记录，保留其压缩算法、加密数据、注释和扩展字段；新增或替换的内容才重新压缩。修改 7z 时复用未变更的完整压缩块，只重压部分覆盖/删除所影响的固实块；缺少必要条目 CRC 的块也需要重压。7z 拖出只解码包含所选文件的块，到该块最后一个所选文件便停止；固实块中位于所选文件之前的数据仍需解码。
-- 更新在原包所在磁盘生成新包后原子替换，失败或取消不替换原包，高速模式下也不就地写坏旧包。仍需复制保留的压缩字节，并为新包、新增文件及必要的固实块重压内容预留空间；这不是零整包 I/O 的原地修改。安全模式回读校验新增/重压数据，并逐字节比较复制的压缩数据，不重新解压所有未变更内容，也不额外检测其中原本存在的内容损坏。重新编码的内容不保证保留外部程序的压缩方法和全部扩展元数据。不要同时用其他软件修改同一压缩包。
-- 修改加密包需输入原密码；原样复制的条目保持原加密状态，新增/重压内容使用输入密码加密。7z 若仅数据加密而文件头未加密，更新前会额外解码首个加密块直到一个带 CRC 的条目完成，以确认密码；更新后的文件头也会加密。普通加密 7z 通过加密文件头检查密码。自解压文件不允许修改。
-- 自解压支持的是内嵌标准归档，不代表支持任意可执行文件、安装器、AppImage 或 Mach-O/ELF 资源提取。7z 自解压前缀最多 4 MiB，RAR 的前缀查找范围由 UnRAR 限定（约 4 MiB）；ZIP 由中央目录定位。普通程序或损坏文件会报错，不执行其中的程序、脚本或安装指令。
-- CAB 支持不压缩、MSZIP 和 LZX；不支持 Quantum，以及不能正确解码为 Unicode 的旧式文件名。
-- ISO 支持 ISO 9660、Joliet 和 Rock Ridge 文件树及多区段文件，不支持仅含 UDF 的镜像、交错存储、多卷或扩展属性记录；压缩方法不受支持的 ZIPX 条目会报错。
-- 不解压归档中的链接或特殊文件，也不支持 TAR 稀疏文件。RAR 字典及 XZ、Zstandard 解码窗口有约 256 MiB 安全限制；过大的归档会报错。
-- Brotli 只接受标准窗口格式，非标准的大窗口扩展会被拒绝，以避免解码时申请过多内存。
-- 压缩包密码只用于当前会话，不写入设置文件。请自行保存密码；忘记密码后无法恢复。
-- 暂停为协作式暂停：已在处理的数据块完成后进入等待；暂停期间仍可取消，取消会清理未完成的临时压缩包。
-- ZIP 压缩使用全部逻辑处理器：小文件和文件夹分组后并行压缩，其他文件各自并行压缩；16 MiB 至 2 GiB 的未加密文件再拆为 4 MiB 分块并行压缩，压缩包会略微变大。所有条目仍按原顺序写入，压缩方法（Deflate）和等级保持不变。并行时占用额外内存；较大的中间结果暂存在目标文件夹，完成或取消后自动删除。
-- 7z 一般数据使用 LZMA2、BT4 匹配、nice length 32 和最多 16 MiB 字典，参考 7-Zip/PeaZip 的“标准”参数；数据较少时缩小字典。使用全部逻辑处理器，并按编码器与待写入块的内存估算减少线程；目标是将估算值控制在可用物理内存的 3/4 内，实际占用还受编码器缓存和其他进程影响。普通固实块按总数据量和线程数取 8 MiB 至 64 MiB，文件夹和空文件不占数据块。选择性解压时需要解码同一固实块中位于目标之前的数据；已压缩但尚未写入的块暂存在内存中。
-- 对相邻、大小相同且介于 256 KiB 和 16 MiB 的文件，采样开头、中间和结尾各 4 KiB；样本相同后再读取完整文件，将其分为 64 段并比较每段的 CRC32，至少 90% 的段一致才视为相似，以减少误判。相似文件以最多 64 MiB 为一组，使用较快的 LZMA2 编码器和按单个文件大小设置的字典，避免组内分块重置字典；不同组仍可并行。采样和摘要只决定压缩策略，所有文件仍会完整读取和校验，不会省略文件内容；预读会增加 I/O，个别数据集的速度或体积可能变化。
-- 对至少 16 KiB、扩展名为 `.exe`、`.dll`、`.sys`、`.ocx`、`.cpl`、`.scr`、`.efi`、`.drv`、`.pyd`、`.node`、`.ax`、`.com`、`.bin` 或无扩展名的文件，检查 PE 文件头；识别为 x86 或 ARM64 可执行文件时分别启用 BCJ 过滤器。同一固实块只使用一种过滤器；ARM64 过滤器需要支持该方法的解压程序，例如 7-Zip 23.01 或更新版本。
-- 能独自占满全部线程的超大文件（不小于“线程数 × 16 MiB”）优先压缩，按线程数切为 16 MiB 至 64 MiB 的独立分块。其余较大文件和普通固实块也可能分块并与其他块并行；相似文件组不再做内部独立分块。文件夹和空文件先写入，较大文件、相似文件组和普通固实块分别调度，因此不同组之间的归档顺序可能变化。分块可能增大压缩包，实际速度和压缩率取决于数据与硬件；进度按已读入的字节统计，读完后仍需等待编码和写盘完成。
-- ZIP 和 ISO 多文件解压最多使用 8 个线程（不超过逻辑处理器数和所选文件数），共享已校验的目录信息，使用独立读取位置和缓冲并行处理、写盘；单个文件仍顺序处理。
-- 7z 的独立压缩块可并行解码，最多使用 8 个线程，按解码器字典估算将并行内存控制在约 512 MiB；字典过大或方法无法估算时回退顺序解码。同一固实块内仍需顺序解码；RAR 固实包和流式 TAR 不能按文件直接并行拆开。并行解压保留密码、校验、路径检查、暂停/取消、临时文件发布和修改时间恢复，实际速度取决于压缩结构、存储和处理器。
-- 所有格式的直接拖放与普通解压共用解码器、并行调度和完整性模式，不扩大原有格式、加密或分卷支持范围；回退到 ZIP 虚拟文件流时，文件请求次序由接收程序决定，不等同于普通并行解压。
+- 仅创建 ZIP、7z、TAR；仅修改 ZIP、7z。暂不创建分卷压缩包或自解压文件。
+- 高速模式为默认设置。安全模式提供额外校验和失败回滚，但不保证抵御断电、系统崩溃或强制结束进程。
+- 外部程序接管的系统拖放由接收程序管理目标文件，不具备与“解压所选到”相同的事务回滚保证。
+- 压缩包可能包含恶意内容。解压不可信文件时请谨慎；只有在信任压缩包时才恢复其中记录的特殊链接，因为链接目标可能位于解压目录之外。
+- 文件格式自身的校验能力不同；对重要数据建议另行保存校验和并验证备份。
 
-可运行 `cargo test --release --no-default-features --test direct_drag compare_direct_and_regular_extraction_throughput -- --ignored --nocapture --test-threads=1` 对比直接拖放与普通解压入口。基准生成 16 个文件、共 32 MiB，分别测试 ZIP/7z 的高速与安全模式；预热后交替执行，每条路径取四次测量的中位数，并逐字节核对输出。直接路径包含同名冲突检查；不包含 Windows 拖放、界面刷新和用户确认等待，因此不能代替实际慢样本的端到端测量。生成的数据在测试结束时自动清理。
+## 构建
 
-## API 测试工具
-
-在主窗口选择“工具 → API 测试工具”，或运行 `hx6zip.exe --api-tester`。工具使用同一个 Hx6Zip 程序，以独立窗口运行，不改变主窗口的主题或压缩任务。窗口默认最大化，恢复大小为 1280×900。同一用户只允许一个 API 工具窗口编辑数据；重复打开时会切换到已有窗口，无法切换时会提示从任务栏打开。
-
-- 选择 HTTP 方法并输入 URL，按回车或点击“发送”；省略协议时默认使用 `http://`。支持查询参数、请求头、无请求体、JSON、XML、纯文本、表单 URL 编码和多部分表单（`名称=@文件路径` 上传文件）。请求头、参数和表单中以 `#` 或 `//` 开头的行不会发送；JSON 可格式化。
-- 支持无认证、Bearer、Basic 和 API Key（请求头或查询参数）；密码类字段可显示或隐藏。可设置超时、重定向和 SSL/TLS 证书验证，使用系统的 `http_proxy` / `https_proxy` 环境变量访问代理。
-- 请求、文件夹和排序自动保存；支持搜索、新建、切换、克隆、复制、重命名、移动、删除、多级文件夹和拖放。请求右键可复制 JSON、生成 cURL、创建示例、查看信息或打开数据文件位置；删除需确认。
-- 环境支持新建、重命名和删除，每行写一个 `名称=值`；地址、参数、请求头、请求体、认证和断言可引用 `{{变量名}}`。内置 `{{$timestamp}}`、`{{$isoTimestamp}}`、`{{$randomInt}}`、`{{$guid}}`；生成的 cURL 使用当前环境值。
-- 断言每行一条，例如 `res.status eq 200`、`res.body.data[0].id exists`、`res.headers.content-type contains json`、`res.responseTime lt 1000`。支持 `eq`、`neq`、`gt`、`gte`、`lt`、`lte`、`contains`、`notContains`、`startsWith`、`endsWith`、`exists`、`notExists`、`isEmpty` 和 `isNotEmpty`。
-- 响应显示状态、耗时、大小、响应体、响应头、请求/响应时间线和断言结果；内容可编辑并通过右键复制。点击“取消”会忽略结果，但不能保证中断已发出的网络请求。
-
-Windows 数据位于 `%LOCALAPPDATA%\Hx6Zip\api-client\`：`requests.json` 保存请求和文件夹，`environments.json` 保存环境，`api-client.lock` 用于防止多个窗口同时修改数据。首次使用时，如果 Hx6Zip 尚无请求数据，会从旧版 `%LOCALAPPDATA%\dmgpost\dmgpost\data\` 复制请求和环境；若 dmgpost 没有请求而旧版 HBruno 有，则使用 HBruno 的请求及对应环境，避免混用不同版本的数据。两者都没有请求时仍会迁移已有环境。不会覆盖已有 Hx6Zip 文件或删除旧数据，复制失败会显示错误；之后的修改只保存在 Hx6Zip 目录。迁移前请关闭旧版工具，避免迁移期间修改旧文件。
-
-请求、认证信息和环境变量以明文保存在本机，请注意保护和备份上述目录。安装版卸载及便携版删除程序目录都不会自动删除这些数据。
-
-## 安装、便携运行与卸载
-
-- 支持 Windows 10 和 Windows 11 x64；运行时需要 Microsoft Visual C++ 2015–2022 x64 运行库。
-- 安装版 `Hx6Zip-Setup-<版本>-x64.msi` 按当前 Windows 用户安装，添加开始菜单快捷方式、文件关联候选项和传统右键菜单。可在 Windows“已安装的应用”中卸载；卸载会清理 Hx6Zip 安装的菜单项和当前用户的 Hx6Zip 新版菜单包。
-- 双击 MSI 显示中文安装向导，确认后才安装；再次打开已安装的同一个 MSI，可选择修复或删除。新版或同版本重新打包的 MSI 会自动移除旧包并替换文件，不产生重复的卸载记录；低版本会被阻止。升级失败会回滚恢复旧版。升级前请关闭 Hx6Zip 和正在执行的压缩任务。
-- 首次安装可选择目录；升级时自动定位并沿用旧版目录（包括旧版未保存目录设置的情况），不允许在升级过程中更换目录。如需迁移目录，请先卸载再安装。升级先写入新版，成功后再移除旧版注册；保持组件标识与关键路径稳定，并强制替换同版本文件。升级过程中保留新版右键菜单包的现有注册；如需更新该包，请按下面的说明重新注册。
-- 便携版 `Hx6Zip-Portable-<版本>-x64.zip` 解压后即可运行，不写入注册表、不添加右键菜单；删除解压目录即可移除程序，API 请求数据仍保留在用户数据目录。
-- 两种版本互不要求对方存在。便携版不会留下需要卸载的右键菜单。
-- 程序本身不会强制修改 Windows 的受保护默认应用设置。安装版可点击“设置默认打开方式”，在 Windows 设置中选择 Hx6Zip 并按扩展名确认；也可以右键文件，在“打开方式”中选择 Hx6Zip。便携版需要通过“打开方式”手动浏览到 `hx6zip.exe`。
-
-生成两个分发包（需要 Rust 1.93+、WiX Toolset 6、Windows MSVC 工具链和 Windows SDK）：
-
-```powershell
-wix extension add WixToolset.UI.wixext/6.0.2
-.\installer\build.ps1
-```
-
-WiX UI 扩展只需在构建机安装一次。发布版本以根目录 `Cargo.toml` 为唯一版本来源，必须使用三段数字 `major.minor.patch`（上限 `255.255.65535`）；正式发布内容变更应递增版本。本次版本为 `0.1.2`，可升级原来的 `0.1.1`。重新打包同版本也支持替换，但无法区分同版本包的先后顺序；不要用此方式发布不同的正式版本。`-SkipBuild` 会校验程序内嵌版本，拒绝将旧程序打成新版本安装包。
-
-输出位于 `dist\`。未指定 `-CertificateThumbprint` 时，会自动使用当前用户“个人”证书存储中有效的 `CN=MZip Development` 代码签名证书；找不到或指定 `-Unsigned` 时，MSI 只使用传统右键菜单。便携版完全不进行系统集成。
-
-验证安装向导和升级表（不修改系统安装状态）：
-
-```powershell
-.\installer\Test-Installer.ps1 -Package .\dist\Hx6Zip-Setup-0.1.2-x64.msi
-```
-
-完整安装回归需在没有安装 Hx6Zip、没有 Hx6Zip 注册表设置和新版菜单包的临时 Windows 账户或虚拟机中运行。以下测试实际执行旧版安装、升级、重复运行、修复、同版本重新打包替换、阻止降级、注入升级失败验证回滚，以及卸载，完成后清理测试安装；失败时保留日志：
-
-```powershell
-.\installer\Test-Installer.ps1 -Package .\dist\Hx6Zip-Setup-0.1.2-x64.msi -PreviousPackage .\dist\Hx6Zip-Setup-0.1.1-x64.msi -RunLifecycle
-```
-
-### 程序图标
-
-`assets\hx6zip.png` 是蓝青色 M 与拉链组合的图标原图，`assets\hx6zip.ico` 包含 16、20、24、32、40、48、64、96、128、256 像素版本。Windows GUI 构建自动将 ICO 嵌入程序，用于窗口、任务栏、文件关联和右键菜单；安装包快捷方式、卸载列表及 Windows 11 菜单包也使用同一图标。
-
-主窗口、右键操作窗口和 API 测试工具在创建时显式设置 Windows 大小窗口图标，确保任务栏和 Alt+Tab 使用嵌入的 Hx6Zip 图标，不仅依赖窗口类默认图标。修改后需重新构建并运行新版程序；已安装的旧版不会自动更新。
-
-交互桌面下可运行 `cargo test --test window_icons -- --ignored` 验证三类窗口均设置大小图标；测试前请关闭 API 测试工具。
-
-从 Windows 11 新版右键菜单启动的进程会继承菜单包的应用身份，任务栏原本会改用包内 Logo，导致解压、分割等窗口显示灰色方框。为此，所有 Hx6Zip 窗口都会设置统一的窗口 AppUserModelID `Hx6Zip.Desktop`，以及使用 `hx6zip.exe` 内嵌图标的 Relaunch 图标；开始菜单快捷方式也使用同一 ID。这样，无论从哪里启动，任务栏都使用同一图标和分组。`installer\build.ps1` 仍会为菜单包生成 `Square44x44Logo.targetsize-*` 及 `resources.pri`，作为包内 Logo。更新后需重新安装 MSI。
-
-更换原图后，运行以下命令更新 ICO 和菜单包 PNG，再重新构建程序与安装包：
-
-```powershell
-.\installer\Update-Icons.ps1
-```
-
-### Windows 11 新版右键菜单
-
-Windows 10 保留传统菜单。Windows 11 的文件和文件夹新版菜单需要带应用身份的已签名包；使用下面的开发证书构建后，MSI 会自动信任证书并注册菜单，将“Hx6Zip”放在“显示更多选项”外。文件夹背景仍使用传统菜单。
-
-1. 在构建机运行 `.\installer\New-DevelopmentCertificate.ps1`，记录输出的证书指纹。脚本只在当前用户的“个人”证书存储中创建不可导出私钥的开发证书，并导出公钥 `Hx6Zip-Development.cer`，不会信任构建机上的证书。后续构建应复用同一证书。
-2. 运行 `.\installer\build.ps1 -CertificateThumbprint <证书指纹>`。输出的 MSI 包含已签名的新版菜单包和公钥证书；便携版仍不注册菜单。
-3. 在 Windows 11 安装 MSI 时，如果本机尚未信任该证书，会弹出一次 UAC 提示，用于将 `Hx6Zip-Development.cer` 导入**本地计算机 → 受信任的人员**（影响本机所有用户），随后为当前用户注册新版菜单。拒绝 UAC 或注册失败时，安装仍会完成，并提示原因；传统菜单照常可用。日志位于 `%TEMP%\Hx6Zip-Windows11Menu.log`，可通过“修复”安装重试。
-4. 如菜单未出现，可重新启动资源管理器或注销后重新登录。也可以手动重试（需要时会请求 UAC 信任证书）：
-
-   ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\Hx6Zip\Windows11Menu.ps1" -TrustCertificate
-   ```
-
-自签名证书只适合开发和受控测试，SmartScreen 仍可能提示“未知发布者”；正式分发应使用受信任的代码签名证书并相应调整包发布者。MSI 导入证书时会在 `HKLM\SOFTWARE\Hx6Zip\CertificateTrust` 记录所有权；安装前已受信任的证书不会被记录。完全卸载时会注销菜单；只有证书由 Hx6Zip 导入且本机没有其他用户仍注册该菜单时，才会请求 UAC 从“受信任的人员”中移除证书。拒绝时证书保留，可在证书管理工具中手动移除。
-
-### 右键快速解压
-
-- 单选文件后，除 TXT、常见文本/源码、图片、音视频等明确排除的扩展名外，均提供尝试解压入口，包括 EXE、未知扩展名和无扩展名文件。菜单只做轻量扩展名判断，点击后才读取内容；不支持的内容会明确报错，不自动运行文件。主程序文件列表与 Windows 新版/传统菜单使用相同排除规则，文件夹和多选不提供解压操作。
-- 选择“解压到当前文件夹”，直接解压到文件所在目录；选择“解压到压缩文件名文件夹”，始终新建或使用同名子文件夹。例如 `mxbgl.zip` 解压到 `mxbgl\`，`data.tar.gz` 解压到 `data\`，`setup.exe` 解压到 `setup\`，不使用智能目录规则省略这一层。
-- 未知格式仅探测 ZIP、7z、RAR；其他已支持格式仍按原扩展名打开。也可在“打开压缩包”对话框选择“所有文件”手动打开，或拖入单个候选文件尝试读取。不会注册 EXE 默认打开关联，文件列表中普通程序的双击行为不变。
-- 两项操作均自动开始，显示独立进度窗口，支持暂停、取消和后台运行。遇到同名文件时先询问“全部替换”或“取消”；密码错误会明确报错，可点击“打开主窗口”输入密码后重试。
-- Windows 11 新版菜单会显示具体文件夹名称；传统菜单使用固定名称。更新程序后需重新安装 MSI；新版菜单还需重新构建、签名并注册菜单包。
-- 也可直接运行 `hx6zip.exe --extract-here "压缩包路径"` 或 `hx6zip.exe --extract-folder "压缩包路径"`。
-
-### 右键快速压缩
-
-- Windows 10/11 传统菜单的逐个 ZIP 压缩与“创建 ZIP/7z”统一使用 `DelegateExecute`，由 `hx6zip.exe --shell-server` 接收完整选择列表，不依赖资源管理器加载菜单 DLL。安装此修复包时会清理旧的 `ExplorerCommandHandler` 值；不能仅替换 EXE，需运行新版 MSI 更新注册。Windows 11 新版菜单仍由菜单 DLL 提供。
-- “压缩每个到单独的压缩包中”不合并选择：文件或文件夹各自生成 ZIP，沿用单选命名规则（例如 `a.txt` → `a.zip`、`a.zip` → `a.zip.zip`），同名自动加序号。出错时停止并显示错误；取消或出错都保留已完成的 ZIP、清理未完成的临时文件。也可运行 `hx6zip.exe --create-each-zip "文件1" "文件2"`。更新 Windows 菜单需重新构建并安装 MSI（新版菜单包需签名）。
-- 单选以源名称命名；多选以所在文件夹名称命名，保存在第一个所选项目所在目录。重名自动添加 ` (1)`、` (2)` 等序号，不覆盖源文件或已有压缩包；并发任务也不会互相覆盖。
-- 独立进度窗口自动开始，支持“暂停/继续”“取消任务”“后台”。“后台”最小化到任务栏，压缩继续进行，可从任务栏恢复窗口。完成后显示实际输出路径；失败时保留错误信息。
-- 保存路径或状态信息过长时会缩略显示，将鼠标悬停在文字上可查看完整内容。
-- 进度窗口显示平均压缩速度、已用时间、压缩前后大小、压缩率和预计剩余时间。速度按已读入字节和未暂停的时间计算（1 MB = 1024² 字节）；已用时间包含准备、暂停和写盘时间。
-- 压缩中显示的是当前写出大小（包括缓冲）及其与已读入数据的比率，并行编码的数据写回前不会计入，因此仅供参考；读完输入后剩余时间无法准确估计。完成后显示实际压缩包大小及“压缩后 ÷ 压缩前”的最终比率；空输入的压缩率不可计算。
-- 点击窗口关闭按钮会先取消任务并等待临时文件清理，再退出；取消等待期间不强制终止压缩线程。
-- 快速压缩使用默认格式参数且不加密；需要密码或自定义位置时，从 Hx6Zip 主界面创建压缩包。
-- 文件夹背景的 Hx6Zip 菜单压缩当前文件夹，压缩包保存在其上级目录；不支持直接压缩磁盘根目录。
-- 安装版使用进程外 Windows COM 命令接收完整选择列表，再通过私有管道传给进度窗口；新版菜单的轻量命令 DLL 由系统 COM 代理进程加载，不依赖多进程延时合并。升级安装会移除旧版平铺菜单，卸载同时移除菜单与 COM 注册。
-
-### 文件分割与合并
-
-- 支持任意普通文件的原始二进制分割，不是分卷压缩；不能将 RAR 等格式的压缩分卷按此方式解压。
-- 合并时应选择全部分片。程序检查同目录、同名、编号从 `.001` 起连续且无重复，并按数字而非选中顺序拼接；原始分片无清单，无法判断末尾是否缺片或内容是否已被修改。
-- 若目标原文件仍存在，合并会明确报错，不覆盖；可先把全部分片放到另一个目录再合并。分割目标目录如已有同名分片，也会报错，避免混入旧分片。
-- 命令行入口：`hx6zip.exe --split-file "文件路径"` 打开分割设置，`hx6zip.exe --merge-files "文件名.002" "文件名.001"` 自动合并。
-- 更新 Windows 菜单需重新构建、安装 MSI；Windows 11 新版菜单还需重新签名并注册菜单包。[Windows11Menu.ps1](installer/Windows11Menu.ps1) 负责包注册，菜单内容由 Shell DLL 提供。
-- 专项测试：`cargo test --no-default-features --test file_parts`、`cargo test --bin hx6zip split_`、`cargo test -p hx6zip-shell-extension`。交互桌面下可运行 `cargo test --test shell_integration file_parts_cli_merges_reverse_selection_and_shell_pipe -- --ignored`，验证真实 GUI 的命令行与完整选择列表管道、逆序合并及完成后自动关闭，无需安装或修改系统注册。
-
-## 编译与运行
-
-需要 Rust 1.93 或更新版本，以及 Windows 的 MSVC 编译工具和 Windows SDK。
-
-```powershell
-cargo run --release
-```
-
-仅编译：
+需要 Rust 1.93 或更高版本。构建并运行 GUI：
 
 ```powershell
 cargo build --release
 .\target\release\hx6zip.exe
 ```
 
-## 快速上手
-
-1. 启动后在资源管理器中双击磁盘或文件夹，也可输入路径后回车。选中文件或文件夹后右键创建 ZIP、创建 7z 或添加到压缩文件；选中一个压缩包后右键解压。Ctrl/Shift 和勾选框可组合多选。
-2. 双击压缩包，或使用“文件 → 打开压缩包”，直接在主界面按文件夹浏览。选中文件或文件夹拖到 Windows 文件夹即可解压；直接解压时同名文件由 Hx6Zip 提示，回退到系统传输时由接收程序处理。也可点击“解压所选”（保留包内完整路径，同名时先确认）。通过上一级退出压缩包。
-3. 把 Windows 文件拖到打开的 ZIP/7z 中即可添加到当前目录；同名时确认替换。选中包内项目后点击“删除”或按 Delete，确认后删除。加密包在列表上方输入密码；隐藏文件名的包打开失败后输入密码，再点击“用密码重新打开”。
-4. 从“文件 → 创建压缩包（原界面）”添加文件或文件夹，选择格式和保存位置；需要加密时输入两次密码，然后选择“开始压缩”。安装版也可从 Windows 资源管理器右键选择 Hx6Zip 压缩。
-
-## 测试
-
-### 压缩与解压性能
-
-压缩／解压引擎参考 FerroZip 的底层优化思路独立实现，不替换 Hx6Zip 的扫描、链接、特殊情况清单、覆盖确认、事务或资源管理器拖放逻辑：
-
-- ZIP 的未加密 64 KiB 至 16 MiB（不含上限）文件使用 libdeflate 批量压缩，大文件分块的末块同样使用该后端；仍写标准 Deflate ZIP，并保留文件名和修改时间。加密压缩和非末块继续使用原有实现。不同编码器可能产生略有差异的压缩体积，不保证与原版逐字节相同。
-- ZIP 的未加密 Deflate 条目在压缩／解压大小均不超过 32 MiB 时使用有界缓冲区批量解码并校验 CRC；压缩数据按条目偏移直接读取，不预读邻近数据，也不先经 ZIP 解码器复制到中间缓冲区。其他方法、加密条目及更大文件继续流式解压。每个工作线程的压缩和解压缓冲区合计最多 64 MiB。
-- ZIP、7z、ISO 以及 ZIP 拖放流在 Windows／Unix 上使用指定偏移读取，克隆的读取器不再通过共享锁切换文件游标。不使用可能受外部修改影响的文件内存映射；其他平台保留带锁实现。
-- 顺序读取的固实 7z／TAR 在条目足够多时，将不超过 1 MiB 的文件交给有界写盘队列；队列与工作线程最多持有 12 MiB 的文件内容。返回成功、恢复特殊链接及恢复目录时间之前，等待所有写盘任务完成；写盘错误明确报告。
-- 通用流复制将解码器的小块输出聚合为最多 512 KiB 的写入，RAR 回调输出同样缓冲。仍检查声明大小、暂停／取消和格式校验，并沿用单文件临时写入与提交。安全模式保留临时文件同步和完整事务；高速模式不再对每个临时文件调用 `sync_all`，但仍在解压完成后原子提交单个文件。
-- 从资源管理器拖出非 ZIP 内容时，直接解压到本次拖放独占的临时目录，不再额外创建整包暂存目录并逐项事务发布。安全模式仍同步文件、验证计划中的条目及文件大小；只有全部完成后才把文件交给资源管理器，失败则清理整个临时目录。固实 7z 仍需按压缩块顺序解码，不能像 ZIP 条目一样任意随机解码。
-
-运行既有合成基准（默认使用安全模式，包含创建回读和解压事务）：
+构建 Windows 安装包需要 WiX Toolset 6 和项目的 UI 扩展：
 
 ```powershell
-cargo test --release --no-default-features --test archive_performance benchmark_archive_workloads -- --ignored --nocapture
+wix extension add WixToolset.UI.wixext/6.0.2
+.\installer\build.ps1
 ```
 
-2026-11-07 本机交替运行修改前／修改后 release 测试各三次，耗时中位数如下；每轮均逐字节核对解压结果：
+## English
 
-| 场景 | 原版 | 优化后 | 耗时变化 |
-| --- | --- | --- | --- |
-| 500 × 1 KiB 文件，7z 解压 | 2.158 s | 1.355 s | -37% |
-| 8 × 2 MiB 文件，ZIP 压缩 | 0.157 s | 0.138 s | -12% |
-| 1 × 32 MiB 文件，ZIP 压缩 | 0.300 s | 0.292 s | -3% |
+Hx6Zip is a desktop archive manager for Windows. It combines file browsing with archive management, drag-and-drop operations, and Windows Explorer context-menu integration.
 
-上述结果仅比较 Hx6Zip 修改前后，不是与 FerroZip 的同条件跑分；缓存、磁盘、后台负载、格式和完整性模式都会影响结果，不能据此保证所有格式或所有数据都提速。FerroZip 的直接目标写入、不同链接规则和较少的回读校验不能直接替换本项目的行为。
+### Download
 
-另对同一组 Hx6Zip 生成的 Deflate ZIP 做了 release 解压对比：5 次交替测量，双方均最多使用 8 个线程，双方打开／索引 ZIP 的时间均不计入提取时间；每轮均逐字节核对提取结果。结果为解压调用耗时中位数：
+Get the Windows x64 builds from [GitHub Releases](https://github.com/mingruankeji/hx6zip/releases):
 
-| ZIP 内容 | FerroZip | Hx6Zip 高速模式 | Hx6Zip 安全模式 |
-| --- | ---: | ---: | ---: |
-| 500 × 1 KiB | 0.147 s | 0.359 s | 1.072 s |
-| 8 × 2 MiB | 0.015 s | 0.017 s | 0.035 s |
-| 1 × 32 MiB | 0.079 s | 0.064 s | 0.087 s |
+- [Installer (MSI)](https://github.com/mingruankeji/hx6zip/releases/download/v0.1.2/Hx6Zip-Setup-0.1.2-x64.msi)
+- [Portable version (ZIP)](https://github.com/mingruankeji/hx6zip/releases/download/v0.1.2/Hx6Zip-Portable-0.1.2-x64.zip)
 
-小文件场景仍有差距，主要因为 Hx6Zip 保留逐文件临时文件及原子提交，高速模式只跳过强制同步；安全模式还包含暂存、同步、完整性检查和事务提交。FerroZip 的直接写入路径没有这些相同步骤，因此该表不是完全等价的耐久性／事务比较。新增快路径和跳过高速模式同步后，本机中等 ZIP 的高速解压由约 0.032 s 降至 0.017 s，32 MiB ZIP 由约 0.097 s 降至 0.064 s；机器缓存和负载会造成波动。
+The installer integrates with Explorer. The current MSI uses a development certificate, so Windows may show an unknown-publisher warning or request administrator approval to trust the certificate. Install only software you trust. The portable version does not register system context menus.
 
-同机另以 release 模式、每个场景 3 次测量资源管理器拖出使用的 `export_entries` 路径；安全模式下的 7z 导出中位数如下。打开／索引压缩包不计入，导出结果逐文件核对：
+### Features
 
-| 7z 内容 | 优化前 | 优化后 | 耗时变化 |
-| --- | ---: | ---: | ---: |
-| 500 × 1 KiB | 3.316 s | 0.951 s | -71% |
-| 8 × 2 MiB | 0.352 s | 0.214 s | -39% |
-| 1 × 32 MiB | 0.668 s | 0.418 s | -37% |
+- Browse files and archives; create ZIP, 7z, and TAR archives; open and extract ZIP, 7z, RAR, CAB, ISO, TAR, and common compressed-stream formats.
+- Add, replace, and delete entries in ZIP and 7z archives. Encrypted ZIP, 7z, and RAR archives are supported.
+- Drag and drop files between archives and folders, selectively extract entries, and use Explorer context-menu actions for quick compression and extraction.
+- Split files and join numbered parts.
+- Run background jobs with progress reporting, pause, and cancellation.
+- Optionally skip common caches, `node_modules`, version-control directories, or locked files when creating archives.
+- Choose between high-speed and safe integrity modes. Safe mode performs additional verification and rolls back supported file operations on failure or cancellation.
+- Use the built-in HTTP API testing tool.
 
-该改动优化的是拖出前的临时导出与安全发布流程，不是固实 7z 解码器本身；常规 7z 解压仍按数据块并行解码，性能受压缩块划分、压缩方法和磁盘影响。
+### Safety notes
 
-新增流复制单元测试验证短读、被中断读取重试、实际聚合写入次数、大小不符及取消；写盘队列测试验证异步错误传播和临时文件清理。`archive_parallel` 覆盖固实 7z（含加密）／TAR 的小文件队列、大文件流式回退、空文件、安全／高速模式、完成进度及取消回滚。
+Hx6Zip creates ZIP, 7z, and TAR archives, and edits ZIP and 7z archives. It does not currently create split archives or self-extracting archives.
 
-### 回归测试
+Safe mode does not guarantee recovery from power loss, system crashes, or forced process termination. When another application handles a system drag-and-drop operation, destination files are managed by that application and do not have the same transaction guarantees as **Extract to**.
+
+Treat untrusted archives with caution. Restoring special links recorded in an archive may create links whose targets are outside the extraction directory. Archive formats also differ in their ability to detect corruption; keep separate checksums for important backups.
+
+### Build from source
+
+Rust 1.93 or later is required. Build and run the GUI with:
 
 ```powershell
-cargo test --no-default-features
-cargo test --no-default-features --test archive_atomicity
-cargo test --no-default-features --test archive_links
-cargo test --no-default-features --test archive_editing
-cargo test --no-default-features --test archive_incremental
-cargo test --no-default-features --test iso_formats
-cargo test --lib api_client::
-cargo test --bin hx6zip
-cargo test --bin hx6zip --features ui-tests api_client_ui::
-cargo test -p hx6zip-shell-extension
-cargo check --bin hx6zip
+cargo build --release
+.\target\release\hx6zip.exe
 ```
 
-`archive_atomicity` 覆盖发布中途取消、第二个目标文件被占用、原文件和目录时间恢复、清理新目录、流式 TAR 中途取消，以及创建时同大小同时间戳的内容变化和回读校验取消。并行解压的 CRC 损坏回滚、各格式往返和密码错误另由工作流及格式测试覆盖。
-
-`archive_links` 覆盖 ZIP/7z 在高速和安全模式下跟随源目录链接、多个链接共享目标、直接选择链接、包内添加、循环链接报错、失效目录联接保留为空目录并警告、缺失/锁定文件跳过及逐个压缩的警告汇总、排除目标包与临时目录、链接内容回读校验，以及解压到已有目录联接时的覆盖确认和实际目标回滚（包含跨盘目标）。官方 `-snl` 保存的无内容 7z 重解析目录按普通空目录解压，不创建重解析点；独立保存的符号链接仍明确拒绝。Windows 上若 PATH 中有官方 `7z`，运行 `cargo test --no-default-features --test archive_links dangling_junction_archives_match_official_7zip -- --ignored` 可对照失效联接的归档目录清单，并由官方程序检查 Hx6Zip 输出完整性；`cargo test --bin hx6zip --features ui-tests compression_warnings_complete_normally` 验证已记录扫描警告的压缩任务正常完成、右键压缩窗口自动关闭，真正失败仍保留错误提示。
-
-`iso_formats` 覆盖 ISO 9660/Joliet/Rock Ridge、多区段文件、符号链接跳过及提示、选择性解压、拖出、特殊条目拒绝、路径检查和取消。可设置 `HX6ZIP_TEST_EXTERNAL_ISO` 为本地镜像路径，再运行 `cargo test --release --no-default-features --test iso_formats external_iso_can_be_extracted -- --ignored --nocapture`，实际验证安全及高速模式下所有普通条目的输出类型和大小，以及跳过链接的提示；临时输出在测试结束后自动清理。
-
-`archive_editing` 覆盖 ZIP/7z 添加、同名替换、文件/目录类型冲突、递归删除、删除至空包后重新添加、隐式目录、加密保持、只读格式导出和失败/取消保护。`cargo test --bin hx6zip ui::archive_drag::` 覆盖 Windows Shell 实际目标的悬停不解压、松键后复制、隐式目录/空目录/Unicode、重复读取和提取中取消；`cargo test --bin hx6zip --features ui-tests ui::` 另覆盖主界面包内导航、选择行为、拖出进度时序与关闭视图时取消任务。交互验收时还应将包内文件和文件夹拖到真实 Windows 资源管理器窗口，验证拖动光标、松键前不解压、复制、同名提示、Esc 取消、提取中取消/关闭及拖入后的目录刷新。
-
-交互式 Windows 桌面可运行 `cargo test --test extract_confirmation -- --ignored --test-threads=1`，使用独立临时压缩包测试右键快速解压的“全部替换”“取消”和关闭按钮，不修改现有文件；测试会短暂打开程序窗口。可设置 `HX6ZIP_TEST_EXTRACT_EXECUTABLE` 指向已构建的 EXE 进行同样的测试。
-
-`archive_incremental` 验证未变更的 ZIP 密文/7z 压缩块逐字节保持不变、局部固实块更新、跳过损坏的未选块及固实块尾部、注释/扩展字段、流式数据描述符、ZIP64 本地头、AES/ZipCrypto，以及明文头加密 7z 的密码检查。ZIP 打开单元测试用 I/O 计数断言：中央目录解析后的列表构建读取和 seek 均为零。浏览器测试移走原包后仍可进入缓存目录和前进/后退，而显式刷新必须重新访问磁盘。
-
-实现参考官方 7-Zip 的 [ZIP 原数据更新](https://github.com/ip7z/7zip/blob/main/CPP/7zip/Archive/Zip/ZipUpdate.cpp)、[7z 块复制/重压](https://github.com/ip7z/7zip/blob/main/CPP/7zip/Archive/7z/7zUpdate.cpp)、[按选中索引拖出](https://github.com/ip7z/7zip/blob/main/CPP/7zip/UI/FileManager/PanelDrag.cpp)和[目录代理缓存](https://github.com/ip7z/7zip/blob/main/CPP/7zip/UI/Agent/Agent.cpp)。本地 [zip 8.6.0 补丁](vendor/zip/)增加只读中央目录元数据接口及所选原始记录合并接口，并确保复制 AES 条目后写出的文件头仍使用方法编号 99，沿用上游许可证；运行时不依赖 7z.exe。
-
-若 PATH 中有官方 `7z`，可运行 `cargo test --no-default-features --test sevenzip_interop incremental_updates_of_official_archives_remain_readable_by_7zip -- --ignored`：由官方程序创建普通 ZIP、ZipCrypto、AES ZIP、普通固实 7z、加密头 7z 和仅数据加密 7z，经过 Hx6Zip 替换和删除后，再由官方程序检查并解压验证。
-
-验证超过 100,000 个目录的 ZIP/7z 创建（会创建大量临时目录，耗时较长），以及运行合成数据性能基准：
+Building the Windows installer also requires WiX Toolset 6 and the project's UI extension:
 
 ```powershell
-cargo test --release --no-default-features --test archive_limits -- --ignored
-cargo test --release --no-default-features --test archive_performance benchmark_archive_workloads -- --ignored --nocapture --test-threads=1
-```
-
-比较 ZIP 压缩和解压速度（需要 7-Zip，可将路径指向 PeaZip 自带的 `7z.exe`；比较使用相同输入、Deflate 6，压缩时双方使用相同的线程数（全部逻辑处理器），解压时 7-Zip 最多 4 线程，结果为三次中位数）。这是合成数据与命令行后端的比较；Hx6Zip 还执行路径安全检查并通过临时文件发布结果，与 7-Zip 的处理不完全相同，不能代表所有实际文件：
-
-```powershell
-$env:HX6ZIP_BENCH_7Z = "C:\Program Files\PeaZip\res\bin\7z\7z.exe"
-cargo test --release --no-default-features --test archive_performance benchmark_zip_against_7zip -- --ignored --nocapture --test-threads=1
-```
-
-比较 7z 的重复文件或指定文件夹（官方使用 `-mx5 -md=32m -mfb=32 -ms=8g`；两者字典与分块策略不同，不是同参数的编码器对比）：
-
-```powershell
-$env:HX6ZIP_BENCH_7Z = "C:\Program Files\7-Zip\7z.exe"
-cargo test --release --no-default-features --test archive_performance benchmark_sevenzip_repeated_against_7zip -- --ignored --exact --nocapture
-$env:HX6ZIP_BENCH_SOURCE = "D:\待测试的文件夹"
-cargo test --release --no-default-features --test archive_performance benchmark_sevenzip_directory_against_7zip -- --ignored --exact --nocapture
-```
-
-安装了 7-Zip 或 NanaZip 并将其 `7z` 命令加入 PATH 后，可额外运行双向兼容性测试。第二项还需要 Windows `tar.exe` 和支持 Zstandard 的 `7z`，例如 NanaZip：
-
-```powershell
-cargo test --no-default-features --test sevenzip_interop -- --ignored
-cargo test --no-default-features --test other_formats external_tar_and_compressors_are_interoperable -- --ignored
-```
-
-安装当前版本 MSI 后，可在交互式 Windows 桌面运行真实 Shell 回归测试（会打开并关闭测试进度窗口，不修改系统注册）：
-
-```powershell
-cargo test --test shell_integration -- --ignored --nocapture
-```
-
-该测试通过系统的 `IContextMenu` 调用 Hx6Zip 二级菜单，验证超过 15 个文件与文件夹的混合选择在 ZIP 和 7z 中各只生成一个完整压缩包。
-
-仅验证构建出的 GUI 两种快捷解压参数与实际输出，以及压缩完成后的倒计时和错误窗口（无需安装 MSI，会打开并关闭测试窗口）：
-
-```powershell
-cargo test --release --test shell_integration quick_extraction_cli_extracts_to_both_destinations -- --ignored --nocapture
-cargo test --test shell_integration quick_compression_closes_five_seconds_after_completion_but_not_error -- --ignored --nocapture
+wix extension add WixToolset.UI.wixext/6.0.2
+.\installer\build.ps1
 ```
