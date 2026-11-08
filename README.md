@@ -28,12 +28,61 @@ Hx6Zip 是一款面向开发者的 Windows 桌面压缩软件。核心压缩与�
 - 后台运行压缩任务，显示进度和速度，支持暂停与取消。
 - 提供高速和安全两种完整性模式。安全模式会在发布压缩结果前进行额外校验，并在受支持的失败或取消场景下回滚文件操作。
 - 内置 HTTP API 测试工具。
+## 项目的由来
+1、需求：长期以来，没有一款适合程序员使用的压缩软件。需要快速压缩大量的文件，可能有几百个G，其中有一些是缓存，有一些是依赖，还有一些是正在被占用的文件，还有一些是链接。
+2、现有压缩软件有很多被人加了广告或者病毒，非常让人反感。
+## 项目的性能
+测试样本：13.9 GB Rust 项目（含缓存目录）；测试环境：Windows 11。
+
+## 📊 核心性能对比（Benchmark）
+
+为便于横向比较，以下数据在同一测试环境下采集，对比对象为 Hx6Zip、360压缩、PeaZip、NanaZip。
+
+### 1) 压缩速度与体积对比（Compression）
+
+说明：倍数以 Hx6Zip 标准模式为基准计算；“排除缓存”模式用于过滤冗余缓存文件。
+
+| 软件 | ZIP 压缩耗时 | 相比 Hx6Zip | ZIP 体积 | 7z 压缩耗时 | 相比 Hx6Zip | 7z 体积 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Hx6Zip（标准）** | **33秒** | **基准（1x）** | 3.84 GB | **2分39秒** | **基准（1x）** | 1.94 GB |
+| 360压缩 | 5分09秒 | 慢 9.3 倍 | 3.77 GB | 18分45秒 | 慢 7.1 倍 | 2.62 GB |
+| PeaZip | 55秒 | 慢 1.7 倍 | 3.99 GB | 2分28秒 | 快 1.1 倍 | 2.24 GB |
+| NanaZip | 2分40秒 | 慢 4.8 倍 | 3.77 GB | 8分43秒 | 慢 3.3 倍 | 1.39 GB |
+| **Hx6Zip（排除缓存）** | **2秒** | **快 16.5 倍** | **309 KB** | **1秒** | **快 159.0 倍** | **242 KB** |
+
+### 2) 解压与拖出速度对比（Decompression & Drag-out）
+
+说明：传统软件在“拖出解压”（直接拖拽到目标位置）时，常因临时目录中转而出现明显卡顿。
+
+| 软件 | ZIP 标准解压 | 7z 标准解压 | ZIP 拖出解压 | 7z 拖出解压 | 拖出体验 |
+| --- | --- | --- | --- | --- | --- |
+| **Hx6Zip（标准）** | **50秒** | **43秒** | **45秒** | **59秒** | 极速响应 |
+| 360压缩 | 1分30秒 | 56秒 | 1分30秒 | 62秒 | 稍有延迟 |
+| PeaZip | 1分26秒 | 43秒 | 30分钟 | 29分钟 | 严重假死（慢约 40 倍） |
+| NanaZip | 2分40秒 | 43秒 | 30分钟 | 26分钟 | 严重假死（慢约 40 倍） |
+| **Hx6Zip（排除缓存）** | **1秒** | **1秒** | **1秒** | **1秒** | 瞬间完成 |
+
+## 🔍 关键数据洞察
+
+1. **拖出解压性能飞跃**
+   * 传统软件（如 PeaZip、NanaZip）将文件直接拖拽到目标文件夹时，需要经过 `Temp` 目录二次转储，导致长达 **26~30分钟** 的漫长等待。
+   * **Hx6Zip 底层直通技术** 将耗时缩短至 **45~59秒**，效率提升近 **40倍**。
+
+2. **专属黑科技：排除缓存模式**
+   * 针对代码项目（如包含 `node_modules`、`target`、`.cache` 等）频繁打包的场景。
+   * 开启后可自动智能过滤冗余缓存，使原本需要数分钟、数 GB 的任务在 **1~2秒内瞬间完成**，产出文件仅数百 KB，极大节省磁盘空间与传输时间。
 
 ## 快速开始
 
 1. 启动 Hx6Zip，在主窗口浏览文件，或直接打开压缩包。
 2. 选择文件后使用工具栏、右键菜单或拖放执行压缩和解压。
 3. 要添加或删除压缩包内的内容，请打开 ZIP 或 7z 后使用“添加”或“删除”。
+
+### 7z 压缩模式
+
+创建压缩包时，主窗口和右键“添加到压缩文件”设置窗口中的“7z”使用快速压缩参数；选择“7z高压缩”则使用原有高压缩参数。右键直接压缩为 7z 也使用快速模式。
+
+快速模式保持原生 Rust，使用较低的匹配搜索深度和最多 32 MiB 的并行分块，相似文件继续采用原有固实压缩策略。两种模式生成的文件均为标准 `.7z`，支持密码和安全校验。压缩速度和文件大小取决于数据；“高速 / 安全”是独立的完整性设置。快速模式是新建 7z 的默认值，选择“7z高压缩”可随时切换；不影响 ZIP、解压和默认归档更新。
 
 ## 安全与限制
 
@@ -89,7 +138,56 @@ The installer integrates with Explorer. The current MSI uses a development certi
 - Choose between high-speed and safe integrity modes. Safe mode performs additional verification and rolls back supported file operations on failure or cancellation.
 - Use the built-in HTTP API testing tool.
 
+### Why this project exists
+
+1. There has long been a need for an archive tool tailored to developer workflows: very large project directories, cache-heavy trees, dependency folders, files currently in use, and symbolic links.
+2. Many existing archive tools include ads or bundled riskware, which hurts trust and usability.
+
+### Performance
+
+Test sample: a 13.9 GB Rust project (including cache directories). Test environment: Windows 11.
+
+## 📊 Core Performance Benchmark
+
+To make comparison straightforward, the results below were collected in the same environment across Hx6Zip, 360 Compression, PeaZip, and NanaZip.
+
+### 1) Compression speed and output size
+
+Note: multipliers are measured against Hx6Zip standard mode. The cache-exclusion mode filters redundant cache files.
+
+| Tool | ZIP time | vs Hx6Zip | ZIP size | 7z time | vs Hx6Zip | 7z size |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Hx6Zip (Standard)** | **33s** | **Baseline (1x)** | 3.84 GB | **2m39s** | **Baseline (1x)** | 1.94 GB |
+| 360 Compression | 5m09s | 9.3x slower | 3.77 GB | 18m45s | 7.1x slower | 2.62 GB |
+| PeaZip | 55s | 1.7x slower | 3.99 GB | 2m28s | 1.1x faster | 2.24 GB |
+| NanaZip | 2m40s | 4.8x slower | 3.77 GB | 8m43s | 3.3x slower | 1.39 GB |
+| **Hx6Zip (Exclude caches)** | **2s** | **16.5x faster** | **309 KB** | **1s** | **159.0x faster** | **242 KB** |
+
+### 2) Extraction and drag-out speed
+
+Note: many tools become sluggish during drag-out extraction because they route through a temporary directory first.
+
+| Tool | ZIP extract | 7z extract | ZIP drag-out | 7z drag-out | Drag-out experience |
+| --- | --- | --- | --- | --- | --- |
+| **Hx6Zip (Standard)** | **50s** | **43s** | **45s** | **59s** | Fast response |
+| 360 Compression | 1m30s | 56s | 1m30s | 62s | Slight delay |
+| PeaZip | 1m26s | 43s | 30m | 29m | Severe stall (~40x slower) |
+| NanaZip | 2m40s | 43s | 30m | 26m | Severe stall (~40x slower) |
+| **Hx6Zip (Exclude caches)** | **1s** | **1s** | **1s** | **1s** | Instant |
+
+### Key insights
+
+1. **Major drag-out improvement**
+   - Traditional tools (such as PeaZip and NanaZip) may spend **26-30 minutes** when dragging files directly to a target folder, mainly due to temporary-directory staging.
+   - **Hx6Zip direct-path extraction** shortens this to about **45-59 seconds**, roughly **40x faster**.
+
+2. **Cache-exclusion mode for code projects**
+   - For projects with folders like `node_modules`, `target`, or `.cache`, cache exclusion can remove redundant files automatically.
+   - Tasks that otherwise take minutes and produce multi-GB archives can complete in **1-2 seconds**, often resulting in only a few hundred KB.
+
 ### Safety notes
+
+When creating an archive, **7z** uses the native Rust fast settings by default. Select **7z high compression** in the main window or Explorer **Add to archive** dialog to use the previous higher-compression settings. Both options produce standard `.7z` files and support passwords and safe verification. The fast mode is also used for direct Explorer 7z compression. Compression speed and archive size depend on the input data.
 
 Hx6Zip creates ZIP, 7z, and TAR archives, and edits ZIP and 7z archives. It does not currently create split archives or self-extracting archives.
 
