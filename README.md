@@ -2,7 +2,7 @@
 
 **中文** | [English](#english)
 
-Hx6Zip 是一款面向开发者的 Windows 桌面压缩软件。核心压缩与解压逻辑使用 Rust 实现，界面基于 GPUI Kit；无需安装 7-Zip，也不依赖 7-Zip 动态库或外部 `7z.exe`。
+Hx6Zip 是一款面向开发者的跨平台桌面压缩软件，目前只做了Windows的适配。核心压缩与解压逻辑使用 Rust 实现，界面基于 GPUI Kit；无需安装 7-Zip，也不依赖 7-Zip 动态库或外部 `7z.exe`。
 
 它特别适合日常处理代码仓库和项目目录：压缩时可排除缓存、前端依赖、版本控制目录及占用中的文件；从压缩包拖出文件时，优先直接解压到目标位置，减少临时文件和重复复制的等待。并行处理与小文件优化也让常见项目归档更高效。性能取决于压缩格式、文件特征和硬件，不同场景的表现会有差异。
 
@@ -106,7 +106,7 @@ wix extension add WixToolset.UI.wixext/6.0.2
 
 ## English
 
-Hx6Zip is a Windows desktop archive manager built for developers. Its core archive logic is written in Rust, and its UI uses GPUI Kit. It does not require 7-Zip to be installed and does not rely on 7-Zip DLLs or an external `7z.exe`.
+Hx6Zip is a cross-platform desktop archive manager designed for developers, with only Windows support implemented so far. Its core archive logic is written in Rust, and its UI uses GPUI Kit. It does not require 7-Zip to be installed and does not rely on 7-Zip DLLs or an external `7z.exe`.
 
 Hx6Zip is designed for everyday project archives: optionally skip caches, frontend dependencies, version-control directories, and files locked by other processes. When dragging entries out of an archive, Hx6Zip can extract them directly to the target, reducing temporary-file and copy overhead. Parallel processing and small-file optimizations help keep common archive tasks responsive. Actual performance varies with archive format, data, and hardware.
 
