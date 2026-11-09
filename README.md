@@ -34,43 +34,39 @@ Hx6Zip 是一款面向开发者的 Windows 桌面压缩软件。核心压缩与�
 ## 项目的性能
 测试样本：13.9 GB Rust 项目（含缓存目录）；测试环境：Windows 11。
 
-## 📊 核心性能对比（Benchmark）
 
-为便于横向比较，以下数据在同一测试环境下采集，对比对象为 Hx6Zip、360压缩、PeaZip、NanaZip。
+### 核心性能对比
 
-### 1) 压缩速度与体积对比（Compression）
+为便于横向比较，以下数据在同一测试环境下采集，对比对象为 Hx6Zip、360压缩、7-Zip、WinRAR。
 
-说明：倍数以 Hx6Zip 标准模式为基准计算；“排除缓存”模式用于过滤冗余缓存文件。
+#### 压缩速度与体积
+
+倍数以 Hx6Zip 标准模式为基准计算；“排除缓存”模式用于过滤冗余缓存文件。
 
 | 软件 | ZIP 压缩耗时 | 相比 Hx6Zip | ZIP 体积 | 7z 压缩耗时 | 相比 Hx6Zip | 7z 体积 |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Hx6Zip（标准）** | **33秒** | **基准（1x）** | 3.84 GB | **2分39秒** | **基准（1x）** | 1.94 GB |
-| 360压缩 | 5分09秒 | 慢 9.3 倍 | 3.77 GB | 18分45秒 | 慢 7.1 倍 | 2.62 GB |
-| PeaZip | 55秒 | 慢 1.7 倍 | 3.99 GB | 2分28秒 | 快 1.1 倍 | 2.24 GB |
-| NanaZip | 2分40秒 | 慢 4.8 倍 | 3.77 GB | 8分43秒 | 慢 3.3 倍 | 1.39 GB |
-| **Hx6Zip（排除缓存）** | **2秒** | **快 16.5 倍** | **309 KB** | **1秒** | **快 159.0 倍** | **242 KB** |
+| --- | ---: | --- | ---: | ---: | --- | ---: |
+| Hx6Zip（标准） | 33 秒 | 基准（1x） | 3.84 GB | 2 分 39 秒 | 基准（1x） | 1.94 GB |
+| 360 压缩 | 5 分 9 秒 | 慢 9.4 倍 | 3.77 GB | 18 分 45 秒 | 慢 7.1 倍 | 2.62 GB |
+| 7-Zip | 2 分 33 秒 | 慢 4.6 倍 | 3.78 GB | 8 分 21 秒 | 慢 3.2 倍 | 1.39 GB |
+| WinRAR | 2 分 30 秒 | 慢 4.5 倍 | 3.83 GB | 不支持 | 不支持 | 不支持 |
+| Hx6Zip（排除缓存） | 2 秒 | 快 16.5 倍 | 309 KB | 1 秒 | 快 159.0 倍 | 242 KB |
 
-### 2) 解压与拖出速度对比（Decompression & Drag-out）
+#### 解压与拖出速度
 
-说明：传统软件在“拖出解压”（直接拖拽到目标位置）时，常因临时目录中转而出现明显卡顿。
+“拖出解压”指将文件直接拖到目标位置。传统软件可能需要通过临时目录中转，因此拖出耗时会增加。
 
 | 软件 | ZIP 标准解压 | 7z 标准解压 | ZIP 拖出解压 | 7z 拖出解压 | 拖出体验 |
-| --- | --- | --- | --- | --- | --- |
-| **Hx6Zip（标准）** | **50秒** | **43秒** | **45秒** | **59秒** | 极速响应 |
-| 360压缩 | 1分30秒 | 56秒 | 1分30秒 | 62秒 | 稍有延迟 |
-| PeaZip | 1分26秒 | 43秒 | 30分钟 | 29分钟 | 严重假死（慢约 40 倍） |
-| NanaZip | 2分40秒 | 43秒 | 30分钟 | 26分钟 | 严重假死（慢约 40 倍） |
-| **Hx6Zip（排除缓存）** | **1秒** | **1秒** | **1秒** | **1秒** | 瞬间完成 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Hx6Zip（标准） | 50 秒 | 43 秒 | 45 秒 | 59 秒 | 极速响应 |
+| 360 压缩 | 1 分 30 秒 | 56 秒 | 1 分 30 秒 | 62 秒 | 稍有延迟 |
+| 7-Zip | 1 分 40 秒 | 51 秒 | 5 分钟 | 5 分钟 | 明显卡顿（慢约 5~6 倍） |
+| WinRAR | 2 分 11 秒 | 1 分 7 秒 | 5 分 20 秒 | 5 分 20 秒 | 严重卡顿（慢约 5~7 倍） |
+| Hx6Zip（排除缓存） | 1 秒 | 1 秒 | 1 秒 | 1 秒 | 瞬间完成 |
 
-## 🔍 关键数据洞察
+### 关键数据洞察
 
-1. **拖出解压性能飞跃**
-   * 传统软件（如 PeaZip、NanaZip）将文件直接拖拽到目标文件夹时，需要经过 `Temp` 目录二次转储，导致长达 **26~30分钟** 的漫长等待。
-   * **Hx6Zip 底层直通技术** 将耗时缩短至 **45~59秒**，效率提升近 **40倍**。
-
-2. **专属黑科技：排除缓存模式**
-   * 针对代码项目（如包含 `node_modules`、`target`、`.cache` 等）频繁打包的场景。
-   * 开启后可自动智能过滤冗余缓存，使原本需要数分钟、数 GB 的任务在 **1~2秒内瞬间完成**，产出文件仅数百 KB，极大节省磁盘空间与传输时间。
+- **拖出解压**：测试中，7-Zip 和 WinRAR 拖出解压分别耗时约 5 分钟以上；Hx6Zip 为 45~59 秒。传统软件可能经过 Temp 目录中转，增加等待时间。
+- **排除缓存**：针对包含 `node_modules`、`target`、`.cache` 等目录的代码项目，启用该模式可过滤缓存文件。本次测试中，压缩耗时为 1~2 秒，生成文件为数百 KB。
 
 ## 快速开始
 
@@ -147,43 +143,38 @@ The installer integrates with Explorer. The current MSI uses a development certi
 
 Test sample: a 13.9 GB Rust project (including cache directories). Test environment: Windows 11.
 
-## 📊 Core Performance Benchmark
+### Core Performance Benchmark
 
-To make comparison straightforward, the results below were collected in the same environment across Hx6Zip, 360 Compression, PeaZip, and NanaZip.
+For a like-for-like comparison, the results below were collected in the same test environment across Hx6Zip, 360 Compression, 7-Zip, and WinRAR.
 
-### 1) Compression speed and output size
+#### Compression speed and output size
 
-Note: multipliers are measured against Hx6Zip standard mode. The cache-exclusion mode filters redundant cache files.
+Multipliers are calculated against Hx6Zip Standard mode. “Exclude caches” filters redundant cache files.
 
-| Tool | ZIP time | vs Hx6Zip | ZIP size | 7z time | vs Hx6Zip | 7z size |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Hx6Zip (Standard)** | **33s** | **Baseline (1x)** | 3.84 GB | **2m39s** | **Baseline (1x)** | 1.94 GB |
-| 360 Compression | 5m09s | 9.3x slower | 3.77 GB | 18m45s | 7.1x slower | 2.62 GB |
-| PeaZip | 55s | 1.7x slower | 3.99 GB | 2m28s | 1.1x faster | 2.24 GB |
-| NanaZip | 2m40s | 4.8x slower | 3.77 GB | 8m43s | 3.3x slower | 1.39 GB |
-| **Hx6Zip (Exclude caches)** | **2s** | **16.5x faster** | **309 KB** | **1s** | **159.0x faster** | **242 KB** |
+| Tool | ZIP time | vs. Hx6Zip | ZIP size | 7z time | vs. Hx6Zip | 7z size |
+| --- | ---: | --- | ---: | ---: | --- | ---: |
+| Hx6Zip (Standard) | 33 sec | Baseline (1x) | 3.84 GB | 2 min 39 sec | Baseline (1x) | 1.94 GB |
+| 360 Compression | 5 min 9 sec | 9.4x slower | 3.77 GB | 18 min 45 sec | 7.1x slower | 2.62 GB |
+| 7-Zip | 2 min 33 sec | 4.6x slower | 3.78 GB | 8 min 21 sec | 3.2x slower | 1.39 GB |
+| WinRAR | 2 min 30 sec | 4.5x slower | 3.83 GB | Not supported | Not supported | Not supported |
+| Hx6Zip (Exclude caches) | 2 sec | 16.5x faster | 309 KB | 1 sec | 159.0x faster | 242 KB |
 
-### 2) Extraction and drag-out speed
+#### Extraction and drag-out speed
 
-Note: many tools become sluggish during drag-out extraction because they route through a temporary directory first.
+“Drag-out extraction” means dragging files directly to the target location. Traditional tools may stage files in a temporary directory, increasing extraction time.
 
-| Tool | ZIP extract | 7z extract | ZIP drag-out | 7z drag-out | Drag-out experience |
-| --- | --- | --- | --- | --- | --- |
-| **Hx6Zip (Standard)** | **50s** | **43s** | **45s** | **59s** | Fast response |
-| 360 Compression | 1m30s | 56s | 1m30s | 62s | Slight delay |
-| PeaZip | 1m26s | 43s | 30m | 29m | Severe stall (~40x slower) |
-| NanaZip | 2m40s | 43s | 30m | 26m | Severe stall (~40x slower) |
-| **Hx6Zip (Exclude caches)** | **1s** | **1s** | **1s** | **1s** | Instant |
+| Tool | ZIP standard extraction | 7z standard extraction | ZIP drag-out extraction | 7z drag-out extraction | Drag-out experience |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Hx6Zip (Standard) | 50 sec | 43 sec | 45 sec | 59 sec | Fast response |
+| 360 Compression | 1 min 30 sec | 56 sec | 1 min 30 sec | 62 sec | Slight delay |
+| 7-Zip | 1 min 40 sec | 51 sec | 5 min | 5 min | Noticeable slowdown (~5–6x slower) |
+| WinRAR | 2 min 11 sec | 1 min 7 sec | 5 min 20 sec | 5 min 20 sec | Severe slowdown (~5–7x slower) |
+| Hx6Zip (Exclude caches) | 1 sec | 1 sec | 1 sec | 1 sec | Instant |
 
-### Key insights
+### Key takeaways
 
-1. **Major drag-out improvement**
-   - Traditional tools (such as PeaZip and NanaZip) may spend **26-30 minutes** when dragging files directly to a target folder, mainly due to temporary-directory staging.
-   - **Hx6Zip direct-path extraction** shortens this to about **45-59 seconds**, roughly **40x faster**.
-
-2. **Cache-exclusion mode for code projects**
-   - For projects with folders like `node_modules`, `target`, or `.cache`, cache exclusion can remove redundant files automatically.
-   - Tasks that otherwise take minutes and produce multi-GB archives can complete in **1-2 seconds**, often resulting in only a few hundred KB.
+- **Drag-out extraction:** In this test, drag-out extraction took about 5 minutes or more with 7-Zip and WinRAR, compared with 45–59 seconds with Hx6Zip. Traditional tools may stage files through a Temp directory, adding wait time.
+- **Cache exclusion:** For code projects containing directories such as `node_modules`, `target`, and `.cache`, this mode filters cache files. In this test, compression took 1–2 seconds and produced archives of a few hundred KB.
 
 ### Safety notes
 
